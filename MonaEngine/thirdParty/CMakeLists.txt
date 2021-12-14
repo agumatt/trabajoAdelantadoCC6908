@@ -18,7 +18,7 @@ add_subdirectory_with_folder("thirdParty" imgui-1.78)
 add_subdirectory_with_folder("thirdParty/Bullet" bullet3-2.88)
 add_subdirectory_with_folder("thirdParty/OpenAL" openal-soft)
 add_subdirectory_with_folder("thirdParty" dr_wav)
-add_subdirectory_with_folder("thirdParty/Assimp" assimp-5.0.1)
+add_subdirectory_with_folder("thirdParty/assimp" assimp)
 add_subdirectory_with_folder("thirdParty" stb)
 
 
