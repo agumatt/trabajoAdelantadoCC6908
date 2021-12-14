@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <assimp/scene.h>
 namespace Mona {
 	class Skeleton;
 	class SkinnedMesh {
@@ -12,10 +13,17 @@ namespace Mona {
 		~SkinnedMesh();
 		uint32_t GetVertexArrayID() const noexcept { return m_vertexArrayID; }
 		uint32_t GetIndexBufferCount() const noexcept { return m_indexBufferCount; }
-		std::shared_ptr<Skeleton> GetSkeleton() const noexcept{ return m_skeletonPtr; }
+		std::shared_ptr<Skeleton> GetSkeleton() const noexcept { return m_skeletonPtr; }
 	private:
 		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
 			const std::string& filePath,
+			const aiScene* paramScene,
+			bool flipUvs = false);
+		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
+			const std::string& filePath,
+			bool flipUvs = false);
+		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
+			const aiScene* scene,
 			bool flipUvs = false);
 		void ClearData() noexcept;
 		std::shared_ptr<Skeleton> m_skeletonPtr;

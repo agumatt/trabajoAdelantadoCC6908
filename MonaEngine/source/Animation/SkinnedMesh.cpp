@@ -1,10 +1,8 @@
-#include "SkinnedMesh.hpp"
-
+ï»¿#include "SkinnedMesh.hpp"
 #include "../Core/Log.hpp"
 #include "../Core/AssimpTransformations.hpp"
 #include <glm/glm.hpp>
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
 #include <stack>
@@ -30,7 +28,7 @@ namespace Mona {
 
 	void SkinnedMesh::ClearData() noexcept {
 		MONA_ASSERT(m_vertexArrayID, "SkinnedMesh Error: Trying to delete already deleted mesh");
-		MONA_ASSERT(m_vertexBufferID,"SkinnedMesh Error: Trying to delete already deleted mesh");
+		MONA_ASSERT(m_vertexBufferID, "SkinnedMesh Error: Trying to delete already deleted mesh");
 		MONA_ASSERT(m_indexBufferID, "SkinnedMesh Error: Trying to delete already deleted mesh");
 		glDeleteBuffers(1, &m_vertexBufferID);
 		glDeleteBuffers(1, &m_indexBufferID);
@@ -40,7 +38,8 @@ namespace Mona {
 
 	SkinnedMesh::SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
 		const std::string& filePath,
-		bool flipUvs) : 
+		const aiScene* paramScene,
+		bool flipUvs) :
 		m_vertexArrayID(0),
 		m_vertexBufferID(0),
 		m_indexBufferID(0),
@@ -48,16 +47,19 @@ namespace Mona {
 		m_skeletonPtr(skeleton)
 	{
 		MONA_ASSERT(skeleton != nullptr, "SkinnedMesh Error: Skeleton cannot be null");
-		Assimp::Importer importer;
-		unsigned int postProcessFlags = flipUvs ? aiProcess_FlipUVs : 0;
-		postProcessFlags |= aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace;
-		const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-
-
-
-		if (!scene) {
-			MONA_LOG_ERROR("SkinnedMesh Error: Failed to open file with path {0}", filePath);
-			return;
+		const aiScene* scene;
+		if (paramScene == nullptr) {
+			Assimp::Importer importer;
+			unsigned int postProcessFlags = flipUvs ? aiProcess_FlipUVs : 0;
+			postProcessFlags |= aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace;
+			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
+			if (!scene) {
+				MONA_LOG_ERROR("SkinnedMesh Error: Failed to open file with path {0}", filePath);
+				return;
+			}
+		}
+		else {
+			scene = paramScene;
 		}
 
 		//Comienzo del proceso de pasar desde la escena de assimp a un formato interno
@@ -66,7 +68,7 @@ namespace Mona {
 		size_t numVertices = 0;
 		size_t numFaces = 0;
 		//El primer paso consiste en contar el numero de vertices y caras totales
-		//de esta manera se puede reservar memoria inmediatamente evitando realocación de memoria
+		//de esta manera se puede reservar memoria inmediatamente evitando realocaciï¿½n de memoria
 		for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
 			numVertices += scene->mMeshes[i]->mNumVertices;
 			numFaces += scene->mMeshes[i]->mNumFaces;
@@ -80,7 +82,7 @@ namespace Mona {
 		std::stack<aiMatrix4x4> sceneTransforms;
 		std::unordered_map<std::string, aiMatrix4x4> boneInfo;
 
-		//Luego pusheamos información asociada a la raiz del grafo
+		//Luego pusheamos informaciï¿½n asociada a la raiz del grafo
 		sceneNodes.push(scene->mRootNode);
 		sceneTransforms.push(scene->mRootNode->mTransformation);
 		unsigned int offset = 0;
@@ -146,7 +148,7 @@ namespace Mona {
 
 
 			for (uint32_t j = 0; j < currentNode->mNumChildren; j++) {
-				//Pusheamos los hijos y acumulamos la matrix de transformación
+				//Pusheamos los hijos y acumulamos la matrix de transformaciï¿½n
 				sceneNodes.push(currentNode->mChildren[j]);
 				sceneTransforms.push(currentNode->mChildren[j]->mTransformation * currentTransform);
 			}
@@ -253,6 +255,15 @@ namespace Mona {
 		glEnableVertexAttribArray(6);
 		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(SkeletalMeshVertex), (void*)offsetof(SkeletalMeshVertex, boneWeights));
 
+
+	}
+
+	SkinnedMesh::SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
+		const std::string& filePath, bool flipUvs) : SkinnedMesh(skeleton, filePath, nullptr, flipUvs) {
+
+	}
+	SkinnedMesh::SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
+		const aiScene* scene, bool flipUvs) : SkinnedMesh(skeleton, "", scene, flipUvs) {
 
 	}
 }

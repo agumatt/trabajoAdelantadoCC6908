@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <assimp/scene.h>
 namespace Mona {
 
 
@@ -21,8 +22,8 @@ namespace Mona {
 		}
 
 		const std::vector<glm::mat4>& GetInverseBindPoseMatrices() const
-		{ 
-			return m_invBindPoseMatrices; 
+		{
+			return m_invBindPoseMatrices;
 		}
 
 		const glm::mat4& GetInverseBindPoseMatrix(uint32_t jointIndex) const {
@@ -56,11 +57,19 @@ namespace Mona {
 		}
 		*/
 
-		Skeleton(const std::string &filePath);
+		Skeleton(const std::string& filePath, const aiScene* paramScene);
+		Skeleton(const aiScene* scene);
+		Skeleton(const std::string& filePath);
 		std::unordered_map<std::string, uint32_t> m_jointMap;
 		std::vector<glm::mat4> m_invBindPoseMatrices;
 		std::vector<std::string> m_jointNames;
 		std::vector<std::int32_t> m_parentIndices;
+	};
+
+	struct SkeletonData {
+
+
+
 	};
 }
 #endif

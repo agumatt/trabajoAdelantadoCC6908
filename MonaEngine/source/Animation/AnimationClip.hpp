@@ -7,6 +7,7 @@
 #include <utility>
 #include <glm/glm.hpp>
 #include "JointPose.hpp"
+#include <assimp/scene.h>
 namespace Mona {
 	class Skeleton;
 	class AnimationClip {
@@ -24,14 +25,17 @@ namespace Mona {
 		};
 		float GetDuration() const { return m_duration; }
 		float Sample(std::vector<JointPose>& outPose, float time, bool isLooping);
-		
+
 		std::shared_ptr<Skeleton> GetSkeleton() const {
 			return m_skeletonPtr;
 		}
 	private:
 		void SetSkeleton(std::shared_ptr<Skeleton> skeletonPtr);
-		AnimationClip(const std::string& filePath,
-			std::shared_ptr<Skeleton> skeleton,
+		AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton, const aiScene* paramScene,
+			bool removeRootMotion = true);
+		AnimationClip(const aiScene* scene, std::shared_ptr<Skeleton> skeleton,
+			bool removeRootMotion = true);
+		AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton,
 			bool removeRootMotion = true);
 		void RemoveRootMotion();
 

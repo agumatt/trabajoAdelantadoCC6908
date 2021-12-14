@@ -4,6 +4,9 @@ set(MONA_HEADERS
 				Core/Config.hpp
 				Core/RootDirectory.hpp
 				Core/AssimpTransformations.hpp
+				IK/CCDSolver.hpp
+				IK/FabrikSolver.hpp
+				IK/SimpleIKChain.hpp
 				Platform/Window.hpp
 				Platform/Input.hpp
 				Platform/KeyCodes.hpp
@@ -75,6 +78,9 @@ set(MONA_SOURCES
 				Platform/Window.cpp
 				Platform/Input.cpp
 				Application.cpp
+				IK/CCDSolver.cpp
+				IK/FabrikSolver.cpp
+				IK/SimpleIKChain.cpp
 				World/GameObjectManager.cpp
 				World/World.cpp
 				Rendering/Renderer.cpp

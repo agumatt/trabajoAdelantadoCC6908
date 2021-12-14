@@ -1,29 +1,35 @@
-#include "AnimationClip.hpp"
+ï»¿#include "AnimationClip.hpp"
 #include <algorithm>
 #include <math.h>
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "../Core/AssimpTransformations.hpp"
 #include "../Core/Log.hpp"
 #include "Skeleton.hpp"
 namespace Mona {
+
 	AnimationClip::AnimationClip(const std::string& filePath,
-		std::shared_ptr<Skeleton> skeleton,
+		std::shared_ptr<Skeleton> skeleton, const aiScene* paramScene,
 		bool removeRootMotion)
 	{
 		MONA_ASSERT(skeleton != nullptr, "AnimationClip Error: Skeleton cannot be null");
-
-		Assimp::Importer importer;
-		unsigned int postProcessFlags = aiProcess_Triangulate;
-		const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-		if (!scene || scene->mNumAnimations == 0)
-		{
-			MONA_LOG_ERROR("AnimationClip Error: Failed to open file with path {0}", filePath);
-			return;
+		const aiScene* scene;
+		if (paramScene == nullptr) {
+			Assimp::Importer importer;
+			unsigned int postProcessFlags = aiProcess_Triangulate;
+			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
+			if (!scene || scene->mNumAnimations == 0)
+			{
+				MONA_LOG_ERROR("AnimationClip Error: Failed to open file with path {0}", filePath);
+				return;
+			}
+		}
+		else {
+			scene = paramScene;
 		}
 
-		//Solo cargamos la primera animación
+
+		//Solo cargamos la primera animaciï¿½n
 		aiAnimation* animation = scene->mAnimations[0];
 		// Dado que los tiempos de muestreo de assimp estan generalmente en ticks se debe dividir casi todos 
 		// los tiempos de sus objetos por tickspersecond. Por otro lado, assimp sigue la convencion de que si mTicksPerSecond 
@@ -65,11 +71,19 @@ namespace Mona {
 			RemoveRootMotion();
 	}
 
+	AnimationClip::AnimationClip(const aiScene* scene, std::shared_ptr<Skeleton> skeleton,
+		bool removeRootMotion) : AnimationClip("", skeleton, scene, removeRootMotion) {
+	}
+
+	AnimationClip::AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton,
+		bool removeRootMotion) : AnimationClip(filePath, skeleton, nullptr, removeRootMotion) {
+	}
+
 	float AnimationClip::Sample(std::vector<JointPose>& outPose, float time, bool isLooping) {
 		//Primero se obtiene el tiempo de muestreo correcto
 		float newTime = GetSamplingTime(time, isLooping);
 
-		//Por cada articulación o joint animada
+		//Por cada articulaciï¿½n o joint animada
 		for (uint32_t i = 0; i < m_animationTracks.size(); i++)
 		{
 			const AnimationTrack& animationTrack = m_animationTracks[i];
@@ -77,12 +91,12 @@ namespace Mona {
 			std::pair<uint32_t, float> fp;
 			glm::vec3 localPosition;
 			/* Siempre se chequea si hay solo una muestra en el track dado que en ese caso no tiene sentido interpolar.
-			En cada cado (rotación, translación y escala) primero se llama una función que obtiene, dado el tiempo de muestreo, 
+			En cada cado (rotaciï¿½n, translaciï¿½n y escala) primero se llama una funciï¿½n que obtiene, dado el tiempo de muestreo,
 			el primer indice cuyo tiempo de muestreo es mayor al obtenido y un valor entre 0 y 1 que representa que tan cerca
 			esta de dicha muestra, este valor se usa para interpolar.*/
 			if (animationTrack.positions.size() > 1)
 			{
-				
+
 				fp = GetTimeFraction(animationTrack.positionTimeStamps, newTime);
 				const glm::vec3& position = animationTrack.positions[fp.first - 1];
 				const glm::vec3& nextPosition = animationTrack.positions[fp.first % animationTrack.positions.size()];
@@ -136,7 +150,7 @@ namespace Mona {
 	}
 
 	void AnimationClip::RemoveRootMotion() {
-		//Remueve las translaciones del track de animación asociado a la raiz del esqueleto
+		//Remueve las translaciones del track de animaciï¿½n asociado a la raiz del esqueleto
 		for (uint32_t i = 0; i < m_animationTracks.size(); i++)
 		{
 			AnimationTrack& animationTrack = m_animationTracks[i];

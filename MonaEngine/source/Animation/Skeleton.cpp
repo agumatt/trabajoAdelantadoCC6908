@@ -1,24 +1,29 @@
-#include "Skeleton.hpp"
+ï»¿#include "Skeleton.hpp"
 #include <stack>
 #include "Skeleton.hpp"
 #include "../Rendering/Renderer.hpp"
 #include "../Core/Log.hpp"
 #include "../Core/AssimpTransformations.hpp"
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 namespace Mona {
 
-	Skeleton::Skeleton(const std::string& filePath) {
-		Assimp::Importer importer;
-		unsigned int postProcessFlags = aiProcess_Triangulate;
-		const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-		if (!scene)
-		{
-			MONA_LOG_ERROR("Skeleton Error: Failed to open file with path {0}", filePath);
-			return;
-		}
+	Skeleton::Skeleton(const std::string& filePath, const aiScene* paramScene) {
 
+		const aiScene* scene;
+		if (paramScene == nullptr) {
+			Assimp::Importer importer;
+			unsigned int postProcessFlags = aiProcess_Triangulate;
+			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
+			if (!scene)
+			{
+				MONA_LOG_ERROR("Skeleton Error: Failed to open file with path {0}", filePath);
+				return;
+			}
+		}
+		else {
+			scene = paramScene;
+		}
 		//Se llena un mapa con la informacion de todos los huesos
 		std::unordered_map<std::string, aiMatrix4x4> boneInfo;
 		for (uint32_t i = 0; i < scene->mNumMeshes; i++)
@@ -34,7 +39,7 @@ namespace Mona {
 
 		}
 
-		//Chequeo del tamaño del esqueleto a importar
+		//Chequeo del tamaï¿½o del esqueleto a importar
 		if (Renderer::NUM_MAX_BONES < boneInfo.size())
 		{
 			MONA_LOG_ERROR("Skeleton Error: Skeleton at {0} has {1} bones while the engine can only support {2}",
@@ -50,7 +55,7 @@ namespace Mona {
 		m_parentIndices.reserve(boneInfo.size());
 		m_jointMap.reserve(boneInfo.size());
 		//El grafo de la escena se reccorre usando DFS (Depth Search First) usando dos stacks. Para poder construir
-		// correctamente la jerarquía
+		// correctamente la jerarquï¿½a
 		std::stack<int32_t> parentNodeIndices;
 		std::stack<const aiNode*> sceneNodes;
 		sceneNodes.push(scene->mRootNode);
@@ -62,7 +67,7 @@ namespace Mona {
 			sceneNodes.pop();
 			int32_t parentIndex = parentNodeIndices.top();
 			parentNodeIndices.pop();
-			//Si el nodo de la escena corresponde a una articulación del esqueleto
+			//Si el nodo de la escena corresponde a una articulaciï¿½n del esqueleto
 			if (boneInfo.find(currentNode->mName.C_Str()) != boneInfo.end())
 			{
 
@@ -92,5 +97,11 @@ namespace Mona {
 		}
 
 	}
-	
+
+	Skeleton::Skeleton(const aiScene* scene) : Skeleton("", scene) {
+	}
+
+	Skeleton::Skeleton(const std::string& filePath) : Skeleton(filePath, nullptr) {
+	}
+
 }
