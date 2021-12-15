@@ -13,20 +13,20 @@ namespace Mona {
 		bool removeRootMotion)
 	{
 		MONA_ASSERT(skeleton != nullptr, "AnimationClip Error: Skeleton cannot be null");
-		const aiScene* scene;
-		if (paramScene == nullptr) {
-			Assimp::Importer importer;
-			unsigned int postProcessFlags = aiProcess_Triangulate;
-			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-			if (!scene || scene->mNumAnimations == 0)
-			{
-				MONA_LOG_ERROR("AnimationClip Error: Failed to open file with path {0}", filePath);
-				return;
-			}
+		Assimp::Importer importer;
+		unsigned int postProcessFlags = aiProcess_Triangulate;
+		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
+		if (paramScene!=nullptr && (!impScene || impScene->mNumAnimations == 0))
+		{
+			MONA_LOG_ERROR("AnimationClip Error: Failed to open file with path {0}", filePath);
+			return;
 		}
-		else {
-			scene = paramScene;
+		std::vector<const aiScene*> sceneChoice = { impScene, paramScene };
+		int choice = 0;
+		if (paramScene != nullptr) {
+			choice = 1;
 		}
+		const aiScene* scene = sceneChoice[choice];
 
 
 		//Solo cargamos la primera animaci�n

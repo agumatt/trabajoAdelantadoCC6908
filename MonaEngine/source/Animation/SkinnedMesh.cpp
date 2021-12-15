@@ -47,20 +47,23 @@ namespace Mona {
 		m_skeletonPtr(skeleton)
 	{
 		MONA_ASSERT(skeleton != nullptr, "SkinnedMesh Error: Skeleton cannot be null");
-		const aiScene* scene;
-		if (paramScene == nullptr) {
-			Assimp::Importer importer;
-			unsigned int postProcessFlags = flipUvs ? aiProcess_FlipUVs : 0;
-			postProcessFlags |= aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace;
-			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-			if (!scene) {
-				MONA_LOG_ERROR("SkinnedMesh Error: Failed to open file with path {0}", filePath);
-				return;
-			}
+
+		Assimp::Importer importer;
+		unsigned int postProcessFlags = flipUvs ? aiProcess_FlipUVs : 0;
+		postProcessFlags |= aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace;
+		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
+		if (paramScene!=nullptr && !impScene) {
+			MONA_LOG_ERROR("SkinnedMesh Error: Failed to open file with path {0}", filePath);
+			return;
 		}
-		else {
-			scene = paramScene;
+
+		std::vector<const aiScene*> sceneChoice = { impScene, paramScene };
+		int choice = 0;
+		if (paramScene != nullptr) {
+			choice = 1;
 		}
+		const aiScene* scene = sceneChoice[choice];
+		
 
 		//Comienzo del proceso de pasar desde la escena de assimp a un formato interno
 		std::vector<SkeletalMeshVertex> vertices;
@@ -254,8 +257,6 @@ namespace Mona {
 		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(SkeletalMeshVertex), (void*)offsetof(SkeletalMeshVertex, boneIds));
 		glEnableVertexAttribArray(6);
 		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(SkeletalMeshVertex), (void*)offsetof(SkeletalMeshVertex, boneWeights));
-
-
 	}
 
 	SkinnedMesh::SkinnedMesh(std::shared_ptr<Skeleton> skeleton,

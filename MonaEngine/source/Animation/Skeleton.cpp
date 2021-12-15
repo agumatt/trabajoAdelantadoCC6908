@@ -10,20 +10,20 @@ namespace Mona {
 
 	Skeleton::Skeleton(const std::string& filePath, const aiScene* paramScene) {
 
-		const aiScene* scene;
-		if (paramScene == nullptr) {
-			Assimp::Importer importer;
-			unsigned int postProcessFlags = aiProcess_Triangulate;
-			const aiScene* scene = importer.ReadFile(filePath, postProcessFlags);
-			if (!scene)
-			{
-				MONA_LOG_ERROR("Skeleton Error: Failed to open file with path {0}", filePath);
-				return;
-			}
+		Assimp::Importer importer;
+		unsigned int postProcessFlags = aiProcess_Triangulate;
+		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
+		if (paramScene!=nullptr && !impScene)
+		{
+			MONA_LOG_ERROR("Skeleton Error: Failed to open file with path {0}", filePath);
+			return;
 		}
-		else {
-			scene = paramScene;
+		std::vector<const aiScene*> sceneChoice = { impScene, paramScene };
+		int choice = 0;
+		if (paramScene != nullptr) {
+			choice = 1;
 		}
+		const aiScene* scene = sceneChoice[choice];
 		//Se llena un mapa con la informacion de todos los huesos
 		std::unordered_map<std::string, aiMatrix4x4> boneInfo;
 		for (uint32_t i = 0; i < scene->mNumMeshes; i++)
@@ -39,7 +39,7 @@ namespace Mona {
 
 		}
 
-		//Chequeo del tama�o del esqueleto a importar
+		//Chequeo del tamanio del esqueleto a importar
 		if (Renderer::NUM_MAX_BONES < boneInfo.size())
 		{
 			MONA_LOG_ERROR("Skeleton Error: Skeleton at {0} has {1} bones while the engine can only support {2}",
@@ -55,7 +55,7 @@ namespace Mona {
 		m_parentIndices.reserve(boneInfo.size());
 		m_jointMap.reserve(boneInfo.size());
 		//El grafo de la escena se reccorre usando DFS (Depth Search First) usando dos stacks. Para poder construir
-		// correctamente la jerarqu�a
+		// correctamente la jerarquia
 		std::stack<int32_t> parentNodeIndices;
 		std::stack<const aiNode*> sceneNodes;
 		sceneNodes.push(scene->mRootNode);
@@ -67,7 +67,7 @@ namespace Mona {
 			sceneNodes.pop();
 			int32_t parentIndex = parentNodeIndices.top();
 			parentNodeIndices.pop();
-			//Si el nodo de la escena corresponde a una articulaci�n del esqueleto
+			//Si el nodo de la escena corresponde a una articulacion del esqueleto
 			if (boneInfo.find(currentNode->mName.C_Str()) != boneInfo.end())
 			{
 
@@ -95,7 +95,6 @@ namespace Mona {
 			}
 
 		}
-
 	}
 
 	Skeleton::Skeleton(const aiScene* scene) : Skeleton("", scene) {
