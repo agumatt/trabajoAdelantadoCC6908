@@ -3,11 +3,11 @@
 #define MESH_HPP
 #include <cstdint>
 #include <string>
+#include <assimp/scene.h>
 
 namespace Mona {
 	class Mesh {
 		friend class MeshManager;
-		
 	public:
 		enum class PrimitiveType {
 			Plane,
@@ -18,6 +18,9 @@ namespace Mona {
 		~Mesh();
 		uint32_t GetVertexArrayID() const noexcept { return m_vertexArrayID; }
 		uint32_t GetIndexBufferCount() const noexcept { return m_indexBufferCount; }
+		static aiMesh* cubeMeshData();
+		static aiMesh* sphereMeshData();
+
 	private:
 		Mesh(const std::string& filePath, bool flipUVs = false);
 		Mesh(PrimitiveType type);
@@ -26,6 +29,7 @@ namespace Mona {
 		void CreateSphere() noexcept;
 		void CreateCube() noexcept;
 		void CreatePlane() noexcept;
+
 
 		uint32_t m_vertexArrayID;
 		uint32_t m_vertexBufferID;

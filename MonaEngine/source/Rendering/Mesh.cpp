@@ -4,11 +4,11 @@
 #include "../Core/AssimpTransformations.hpp"
 #include <glm/glm.hpp>
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
 #include <stack>
 #include <glad/glad.h>
+#include <iostream>
 namespace Mona {
 
 	struct MeshVertex {
@@ -422,6 +422,214 @@ namespace Mona {
 		m_vertexBufferID = sphereVBO;
 		m_indexBufferID = sphereIBO;
 		m_indexBufferCount = static_cast<uint32_t>(indices.size());
+	}
+
+
+	aiMesh* Mesh::cubeMeshData() {
+		// Cada vertice tiene la siguiente forma
+		// v = {p_x, p_y, p_z, n_x, n_y, n_z, uv_u, uv_v, t_x, t_y, t_z, b_x, b_y, b_z};
+		std::vector<std::vector<float>> rawVertices = {
+			{-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f},
+			{1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f},
+			{1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f},
+			{1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f},
+			{-1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f},
+			{-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f },
+
+			{-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+
+			{-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f,  0.0f,  0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+			{-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+
+			{1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f,  0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f,  0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+			{1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f,  0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f},
+
+			{-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{-1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+
+			{-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f},
+			{1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f},
+			{1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f},
+			{1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f},
+			{-1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f},
+			{-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f}
+		};
+		std::vector<std::vector<unsigned int>> rawFaces = {
+			{0,1,2},{3,4,5},
+			{6,7,8},{9,10,11},
+			{12,13,14},{15,16,17},
+			{18,19,20},{21,22,23},
+			{24,25,26},{27,28,29},
+			{30,31,32},{33,34,35}
+		};
+
+		aiMesh* cubeMesh = new aiMesh();
+		std::vector<aiVector3D> vertices = {};
+		std::vector<aiVector3D> normals = {};
+		std::vector<aiVector3D*> UVs = {};
+		std::vector<unsigned int> numUVComponents = {};
+		std::vector<aiVector3D> tangents = {};
+		std::vector<aiVector3D> bitangents = {};
+		std::vector<aiFace> faces = {};
+		int numVertices = 36;
+		int numFaces = 12;
+		for (int i; i < numVertices; i++) {
+			std::vector<float> v = rawVertices[i];
+			vertices.push_back(aiVector3D(v[0],v[1],v[2]));
+			normals.push_back(aiVector3D(v[3], v[4], v[5]));
+			aiVector3D uv = aiVector3D(v[6], v[7], 0.0f);
+			UVs.push_back(&uv);
+			numUVComponents.push_back(2);
+			tangents.push_back(aiVector3D(v[8], v[9], v[10]));
+			bitangents.push_back(aiVector3D(v[11], v[12], v[13]));
+
+		}
+		for (int i; i < numFaces; i++) {
+			std::vector<unsigned int> currRawFace = rawFaces[i];
+			aiFace face = aiFace();
+			face.mNumIndices = 3;
+			face.mIndices = &currRawFace[0];
+		}
+
+		cubeMesh->mVertices = &vertices[0];
+		cubeMesh->mNormals = &normals[0];
+		for (unsigned int i = 0; i < UVs.size(); ++i) {
+			cubeMesh->mNumUVComponents[i] = 2;
+			cubeMesh->mTextureCoords[i] = UVs[i];
+		}
+		cubeMesh->mTangents = &tangents[0];
+		cubeMesh->mBitangents = &bitangents[0];
+		cubeMesh->mFaces = &faces[0];
+		cubeMesh->mNumFaces = numFaces;
+		cubeMesh->mNumVertices = numVertices;
+		return cubeMesh;
+	}
+
+	aiMesh* Mesh::sphereMeshData() {
+		aiMesh* sphereMesh = new aiMesh();
+		std::vector<aiVector3D> vertices = {};
+		std::vector<aiVector3D> normals = {};
+		std::vector<aiVector3D*> UVs = {};
+		std::vector<unsigned int> NumUVComponents = {};
+		std::vector<aiVector3D> tangents = {};
+		std::vector<aiVector3D> bitangents = {};
+		std::vector<aiFace> faces = {};
+
+		unsigned int stackCount = 16;
+		unsigned int sectorCount = 32;
+		constexpr float PI = glm::pi<float>();
+		float sectorStep = 2 * PI / sectorCount;
+		float stackStep = PI / stackCount;
+		float sectorAngle, stackAngle;
+		float radius = 1.0f;
+
+		float x, y, z;
+		int numVertices = 0;
+		for (unsigned int i = 0; i <= stackCount; i++)
+		{
+			stackAngle = PI / 2.0f - i * stackStep;
+			float cosStackAngle = std::cos(stackAngle);
+			float sinStackAngle = std::sin(stackAngle);
+			z = sinStackAngle;
+			for (unsigned int j = 0; j <= sectorCount; j++)
+			{
+				sectorAngle = sectorStep * j;
+				float cosSectorAngle = std::cos(sectorAngle);
+				float sinSectorAngle = std::sin(sectorAngle);
+				x = cosStackAngle * cosSectorAngle;
+				y = cosStackAngle * sinSectorAngle;
+
+				// position
+				aiVector3D vertex = aiVector3D(radius * x, radius * y, radius * z);
+				vertices.push_back(vertex);
+				// normal
+				aiVector3D normal = aiVector3D(x, y, z);
+				normals.push_back(normal);
+				//uv
+				float u = (float)j / (float)sectorCount;
+				float v = (float)i / (float)stackCount;
+				aiVector3D uv = aiVector3D(u, v, 0.0f);
+				UVs.push_back(&uv);
+				// tangent
+				//Tangent dr/dSectorAngle
+				float tx = -sinSectorAngle;
+				float ty = cosSectorAngle;
+				float tz = 0.0f;
+				aiVector3D tangent = aiVector3D(tx, ty, tz);
+				tangents.push_back(tangent);
+				// bitangent
+				//Bitangent dr/dStackAngle
+				float bx = -sinStackAngle * cosSectorAngle;
+				float by = -sinStackAngle * sinSectorAngle;
+				float bz = cosStackAngle;
+				aiVector3D bitangent = aiVector3D(bx, by, bz);
+				bitangents.push_back(bitangent);
+
+				numVertices += 1;
+			}
+
+		}
+
+		int numFaces = 0;
+		unsigned int k1, k2;
+		for (unsigned int i = 0; i < stackCount; ++i)
+		{
+			k1 = i * (sectorCount + 1);
+			k2 = k1 + sectorCount + 1;
+
+			for (unsigned int j = 0; j < sectorCount; ++j, ++k1, ++k2)
+			{
+				if (i != 0)
+				{
+					unsigned int faceIndices1[3] = {k1, k2, k1 + 1};
+					aiFace face1 = aiFace();
+					face1.mNumIndices = 3;
+					face1.mIndices = faceIndices1;
+					faces.push_back(face1);
+					numFaces += 1;
+				}
+
+				if (i != (stackCount - 1))
+				{
+					unsigned int faceIndices2[3] = { k1 + 1, k2, k2 + 1 };
+					aiFace face2 = aiFace();
+					face2.mNumIndices = 3;
+					face2.mIndices = faceIndices2;
+					faces.push_back(face2);
+					numFaces += 1;
+				}
+			}
+		}
+		sphereMesh->mVertices = &vertices[0];
+		sphereMesh->mNormals = &normals[0];
+		for (unsigned int i = 0; i < UVs.size(); ++i) {
+			sphereMesh->mNumUVComponents[i] = 2;
+			sphereMesh->mTextureCoords[i] = UVs[i];
+		}
+		sphereMesh->mTangents = &tangents[0];
+		sphereMesh->mBitangents = &bitangents[0];
+		sphereMesh->mFaces = &faces[0];
+		sphereMesh->mNumFaces = numFaces;
+		sphereMesh->mNumVertices = numVertices;
+
+		return sphereMesh;
 	}
 
 }

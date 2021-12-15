@@ -70,8 +70,6 @@ namespace Mona {
 			//Si el nodo de la escena corresponde a una articulacion del esqueleto
 			if (boneInfo.find(currentNode->mName.C_Str()) != boneInfo.end())
 			{
-
-
 				aiMatrix4x4& mat = boneInfo[currentNode->mName.C_Str()];
 				glm::mat4 m = AssimpToGlmMatrix(mat);
 				m_invBindPoseMatrices.push_back(m);
