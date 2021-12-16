@@ -55,9 +55,101 @@ public:
 	virtual void UserStartUp(Mona::World& world) noexcept {
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
 		// creamos la escena que contiene la cadena
+		aiScene scene = aiScene();
+		std::vector<aiMesh> meshes = {};
+		int numOfSegments = 10;
+		unsigned int i = 0;
+		// create vector with nodes. nombramos nodos y huesos correspondientes con indice de asignacion
+		std::vector<aiNode> nodes = {};
+		// hay una malla por cada nodo (esfera(joint) o cubo(link))
+		nodes[i].mMeshes = {i, i+1};
+		nodes[i].mNumMeshes;
+		nodes[i].mParent;
+		nodes[i].mTransformation;
+		// el nodo 0 será el nodo raiz de la escena.
+		for (i = 0; i < numOfSegments; i++) {
+			std::string jointName = std::to_string(i) + "_joint";
+			// create joint node
+			aiNode jointNode = aiNode(jointName);
+			nodes.push_back(jointNode);
+			nodes[2*i].mMeshes = { 2*i };
+			nodes[2*i].mNumMeshes = 1;
+			nodes[2*i].mTransformation;
+			// create joint mesh
+			aiMesh* sphereMesh = Mona::Mesh::sphereMeshData();
+			meshes.push_back(*sphereMesh);
+			meshes[2*i].mNumFaces;
+			// add bone
+			aiBone jointBone = aiBone(jointName);
+			std::vector<unsigned int> sphereIndices = {};
+			for (int i = 0; i < sphereMesh->mNumFaces; i++) {
+				aiFace f = sphereMesh->mFaces[i];
+				sphereIndices.push_back(f.mIndices[0]);
+				sphereIndices.push_back(f.mIndices[1]);
+				sphereIndices.push_back(f.mIndices[2]);
+			}
+			// remove duplicated indices
+			std::sort(sphereIndices.begin(), sphereIndices.end());
+			sphereIndices.erase(std::unique(sphereIndices.begin(), sphereIndices.end()), sphereIndices.end());
+			jointBone.mNumWeights = sphereIndices.size();
+			std::vector<aiVertexWeight> jointWeights = {};
+			for (int i = 0; sphereIndices.size(); i++) {
+				aiVertexWeight w = aiVertexWeight();
+				w.mVertexId = sphereIndices[i];
+				w.mWeight = 1.0f;
+				jointWeights.push_back(w);
+			}
+			jointBone.mOffsetMatrix;
+			meshes[2*i].mBones;
+
+			// create link node
+			std::string linkName = std::to_string(i) + "_link";
+			aiNode linkNode = aiNode(linkName);
+			nodes.push_back(linkNode);
+			nodes[2*i + 1].mMeshes = { 2*i + 1 };
+			nodes[2*i + 1].mNumMeshes = 1;
+			nodes[2*i + 1].mTransformation;
+			// create link mesh
+			aiMesh* cubeMesh = Mona::Mesh::cubeMeshData();
+			meshes.push_back(*cubeMesh)
+			meshes[2*i + 1].mNumFaces;
+			// add bone
+			aiBone linkBone = aiBone(linkName);
+			std::vector<unsigned int> cubeIndices = {};
+			for (int i = 0; i < cubeMesh->mNumFaces; i++) {
+				aiFace f = cubeMesh->mFaces[i];
+				cubeIndices.push_back(f.mIndices[0]);
+				cubeIndices.push_back(f.mIndices[1]);
+				cubeIndices.push_back(f.mIndices[2]);
+			}
+			// remove duplicated indices
+			std::sort(cubeIndices.begin(), cubeIndices.end());
+			cubeIndices.erase(std::unique(cubeIndices.begin(), cubeIndices.end()), cubeIndices.end());
+			linkBone.mNumWeights = cubeIndices.size();
+			std::vector<aiVertexWeight> linkWeights = {};
+			for (int i = 0; cubeIndices.size(); i++) {
+				aiVertexWeight w = aiVertexWeight();
+				w.mVertexId = cubeIndices[i];
+				w.mWeight = 1.0f;
+				linkWeights.push_back(w);
+			}
+			linkBone.mOffsetMatrix;
+			meshes[2*i + 1].mBones;
+
+		}
+		// por último se crea el nodo para el end-effector
 		
-		// create skeleton
-		
+		// falta asignar relaciones padre-hijo
+		for (i = 1; i < numOfSegments; i++) {
+			nodes.push_back(aiNode());
+			nodes[i].mChildren;
+			nodes[i].mNumChildren;
+			nodes[i].mMeshes;
+			nodes[i].mNumMeshes;
+			nodes[i].mParent;
+			nodes[i].mTransformation;
+		}
+		// assign root node
 		// create mesh
 		// create base animation
 		//m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMesh, m_idleAnimation, materialPtr);
