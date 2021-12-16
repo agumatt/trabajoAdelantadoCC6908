@@ -33,8 +33,6 @@ namespace Mona {
 		void SetSkeleton(std::shared_ptr<Skeleton> skeletonPtr);
 		AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton, const aiScene* paramScene,
 			bool removeRootMotion = true);
-		AnimationClip(const aiScene* scene, std::shared_ptr<Skeleton> skeleton,
-			bool removeRootMotion = true);
 		AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton,
 			bool removeRootMotion = true);
 		void RemoveRootMotion();
@@ -47,6 +45,10 @@ namespace Mona {
 		std::vector<jointIndex> m_trackJointIndices;
 		std::shared_ptr<Skeleton> m_skeletonPtr;
 		float m_duration = 1.0f;
+
+	public:
+		AnimationClip(const aiScene* scene, std::shared_ptr<Skeleton> skeleton,
+			bool removeRootMotion = true);
 	};
 }
 #endif

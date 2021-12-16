@@ -58,12 +58,14 @@ namespace Mona {
 		*/
 
 		Skeleton(const std::string& filePath, const aiScene* paramScene);
-		Skeleton(const aiScene* scene);
 		Skeleton(const std::string& filePath);
 		std::unordered_map<std::string, uint32_t> m_jointMap;
 		std::vector<glm::mat4> m_invBindPoseMatrices;
 		std::vector<std::string> m_jointNames;
 		std::vector<std::int32_t> m_parentIndices;
+
+	public:
+		Skeleton(const aiScene* scene);
 	};
 
 	struct SkeletonData {

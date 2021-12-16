@@ -1,12 +1,13 @@
 #include "MonaEngine.hpp"
 #include "Rendering/DiffuseFlatMaterial.hpp"
 #include "Rendering/UnlitFlatMaterial.hpp"
+#include "Animation/SkinnedMesh.hpp"
 
 
-aiScene* animatedChainScene(int numOfSegments) {
+aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
-	std::vector<aiMesh> meshes = {}; // meshes para agregar a la escena
+	std::vector<aiMesh*> meshes = {}; // meshes para agregar a la escena
 	unsigned int i = 0;
 	// create vector with nodes. nombramos nodos y huesos correspondientes con indice de asignacion
 	std::vector<aiNode*> nodes = {};
@@ -22,16 +23,18 @@ aiScene* animatedChainScene(int numOfSegments) {
 			std::string jointName = "endEffector";
 		}
 		// create joint node
-		aiNode* jointNode = &aiNode(jointName);
+		aiNode tmpNode = aiNode(jointName);
+		aiNode* jointNode = &tmpNode;
 		nodes.push_back(jointNode);
 		unsigned int meshIndex = 2 * i;
 		nodes[2 * i]->mMeshes = &meshIndex;
 		nodes[2 * i]->mNumMeshes = 1;
 		// create joint mesh
 		aiMesh* sphereMesh = Mona::Mesh::sphereMeshData();
-		meshes.push_back(*sphereMesh);
+		meshes.push_back(sphereMesh);
 		// add bone
-		aiBone* jointBone = &aiBone();
+		aiBone tmpBone = aiBone();
+		aiBone* jointBone = &tmpBone;
 		jointBone->mName = jointName;
 		std::vector<unsigned int> sphereIndices = {};
 		for (int i = 0; i < sphereMesh->mNumFaces; i++) {
@@ -52,22 +55,23 @@ aiScene* animatedChainScene(int numOfSegments) {
 			jointWeights.push_back(w);
 		}
 		jointBone->mWeights = &jointWeights[0];
-		jointBone->mOffsetMatrix;
-		meshes[2 * i].mBones = &jointBone;
+		meshes[2 * i]->mBones = &jointBone;
 
 		if (!configEndEffector) { // si llegamos al endEffector, no hace falta agregar un link luego.
 			// create link node
 			std::string linkName = std::to_string(i) + "_link";
-			aiNode* linkNode = &aiNode(linkName);
+			tmpNode = aiNode(linkName);
+			aiNode* linkNode = &tmpNode;
 			nodes.push_back(linkNode);
 			meshIndex = 2 * i + 1;
 			nodes[2 * i + 1]->mMeshes = &meshIndex;
 			nodes[2 * i + 1]->mNumMeshes = 1;
 			// create link mesh
 			aiMesh* cubeMesh = Mona::Mesh::cubeMeshData();
-			meshes.push_back(*cubeMesh);
+			meshes.push_back(cubeMesh);
 			// add bone
-			aiBone* linkBone = &aiBone();
+			tmpBone = aiBone();
+			aiBone* linkBone = &tmpBone;
 			linkBone->mName = linkName;
 			std::vector<unsigned int> cubeIndices = {};
 			for (int i = 0; i < cubeMesh->mNumFaces; i++) {
@@ -89,15 +93,17 @@ aiScene* animatedChainScene(int numOfSegments) {
 			}
 			linkBone->mWeights = &linkWeights[0];
 			linkBone->mOffsetMatrix;
-			meshes[2 * i + 1].mBones = &linkBone;
+			meshes[2 * i + 1]->mBones = &linkBone;
 		}
 	}
-
+	// agregamos valores de mallas a escena
+	scene->mNumMeshes = meshes.size();
+	scene->mMeshes = &meshes[0];
 	// asignamos relaciones padre-hijo
 	scene->mRootNode = nodes[0];
 	nodes[0]->mChildren = &nodes[1];
-	nodes[i]->mNumChildren = 1;
-	nodes[i]->mParent = nullptr;
+	nodes[0]->mNumChildren = 1;
+	nodes[0]->mParent = nullptr;
 	for (i = 1; i < 2 * numOfSegments; i++) {
 		nodes[i]->mChildren = &nodes[i + 1];
 		nodes[i]->mNumChildren = 1;
@@ -148,15 +154,16 @@ aiScene* animatedChainScene(int numOfSegments) {
 		rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
 		translation = aiVector3D(0.0f, linkCurrentLength, 0.0f);
 		jointTransform = aiMatrix4x4(scaling, rotation, translation);
-		finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();;
+		finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();
 		nodes[2 * i]->mTransformation = finalJointTransform;
-
+		// update acc transform
+		accTransform = finalJointTransform * accTransform;
+		// set inverseBindMat
+		meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+		// update acc joint transform
+		accJointTransform = jointTransform * accJointTransform;
+		
 		if (!configEndEffector) {
-			// acc transform
-			aiMatrix4x4 accTransform = finalJointTransform * accTransform;
-			// acc joint transform
-			aiMatrix4x4 accJointTransform = jointTransform * accJointTransform;
-
 			// link
 			scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
 			rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -164,22 +171,47 @@ aiScene* animatedChainScene(int numOfSegments) {
 			linkTransform = aiMatrix4x4(scaling, rotation, translation);
 			finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
 			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
+			// update acc transform
+			accTransform = finalLinkTransform * accTransform;
+			// set inverseBindMat
+			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+			// update acc link transform
+			accLinkTransform = linkTransform * accLinkTransform;
 
-			// acc transform
-			aiMatrix4x4 accTransform = finalLinkTransform * accTransform;
-			// acc link transform
-			aiMatrix4x4 accLinkTransform = linkTransform * accLinkTransform;
-
+			// update link length
 			linkCurrentLength = linkCurrentLength * scaleDown;
 		}
 
 	}
 
-	// create base animation
-	// pasamos por cada hueso (hay uno por nodo)
-	for (int i = 0; i < nodes.size(); i++) {
-		std::string boneName = (nodes[i]->mName).C_Str();
+	// animacion base
+	aiAnimation tmpAnimation = aiAnimation();
+	aiAnimation* animation = &tmpAnimation;
+	scene->mAnimations = &animation;
+	scene->mNumAnimations = 1;
+	animation->mTicksPerSecond = 10.0f;
+	animation->mDuration = animDuration* animation->mTicksPerSecond;
+	animation->mNumChannels = nodes.size();
+	std::vector<aiNodeAnim*> channels = {};
+
+	// pasamos por cada nodo
+	for (int i = 0; i < animation->mNumChannels; i++) {
+		std::string nodeName = (nodes[i]->mName).C_Str();
+		aiNodeAnim tmpNodeAnim = aiNodeAnim();
+		aiNodeAnim* anim = &tmpNodeAnim;
+		std::vector<aiVectorKey> pos = {aiVectorKey(0.0f, aiVector3D(0.0f,0.0f,0.0f)), aiVectorKey(animation->mDuration, aiVector3D(0.0f, 0.0f, 0.0f))};
+		std::vector<aiQuatKey> rot = {aiQuatKey(0.0f, aiQuaternion(0.0f, 0.0f, 0.0f)), aiQuatKey(animation->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f))};
+		std::vector<aiVectorKey> scl = {aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f)), aiVectorKey(animation->mDuration, aiVector3D(1.0f, 1.0f, 1.0f))};
+		anim->mNodeName = nodeName;
+		anim->mNumPositionKeys = 2;
+		anim->mNumRotationKeys = 2;
+		anim->mNumScalingKeys = 2;
+		anim->mPositionKeys = &pos[0];
+		anim->mRotationKeys = &rot[0];
+		anim->mScalingKeys = &scl[0];
+		channels.push_back(anim);
 	}
+	animation->mChannels = &channels[0];
 	
 	return scene;
 }
@@ -189,6 +221,7 @@ class AnimatedChain :public Mona::GameObject {
 
 private:
 	aiScene* m_chainScene;
+	Mona::SkeletalMeshHandle m_skeletalMesh;
 
 private:
 	void SetTargetPosition(const glm::vec3 position) {}
@@ -208,8 +241,18 @@ public:
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
 		int numOfSegments = 10;
-		m_chainScene = animatedChainScene(numOfSegments);
-		
+		float animDuration = 1.5f;
+		m_chainScene = animatedChainScene(numOfSegments, animDuration);
+		Mona::Skeleton skeleton = Mona::Skeleton(m_chainScene);
+		std::shared_ptr<Mona::Skeleton> skeletonPtr = std::shared_ptr<Mona::Skeleton>(&skeleton);
+		Mona::SkinnedMesh skinnedMesh = Mona::SkinnedMesh(skeletonPtr, m_chainScene);
+		std::shared_ptr<Mona::SkinnedMesh> skinnedMeshPtr = std::shared_ptr<Mona::SkinnedMesh>(&skinnedMesh);
+		Mona::AnimationClip animationClip = Mona::AnimationClip(m_chainScene, skeletonPtr);
+		std::shared_ptr<Mona::AnimationClip> animationClipPtr = std::shared_ptr<Mona::AnimationClip>(&animationClip);
+		//Mona::Material material = world.CreateMaterial(Mona::MaterialType::DiffuseFlat);
+		auto materialPtr = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
+		//materialPtr->SetDiffuseColor(glm::vec3(0.3f, 0.3f, 0.75f));
+		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMeshPtr, animationClipPtr, materialPtr);
 	}
 
 };

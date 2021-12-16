@@ -22,15 +22,17 @@ namespace Mona {
 		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
 			const std::string& filePath,
 			bool flipUvs = false);
-		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
-			const aiScene* scene,
-			bool flipUvs = false);
 		void ClearData() noexcept;
 		std::shared_ptr<Skeleton> m_skeletonPtr;
 		uint32_t m_vertexArrayID;
 		uint32_t m_vertexBufferID;
 		uint32_t m_indexBufferID;
 		uint32_t m_indexBufferCount;
+
+	public:
+		SkinnedMesh(std::shared_ptr<Skeleton> skeleton,
+			const aiScene* scene,
+			bool flipUvs = false);
 	};
 }
 #endif
