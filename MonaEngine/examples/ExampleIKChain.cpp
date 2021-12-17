@@ -6,6 +6,12 @@
 #include <imgui.h>
 #include "iostream"
 
+aiMatrix4x4 mat_identity() {
+	aiVector3D trans = aiVector3D(0.0f, 0.0f, 0.0f);
+	aiQuaternion rot = aiQuaternion(0.0f, 0.0f, 0.0f);
+	aiVector3D scal = aiVector3D(1.0f, 1.0f, 1.0f);
+	return aiMatrix4x4(scal, rot, trans);
+}
 
 aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// creamos la escena que contiene la cadena
@@ -33,7 +39,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		nodes[2 * i]->mMeshes = jointMeshIndex;
 		nodes[2 * i]->mNumMeshes = 1;
 		// create joint mesh
-		aiMesh* sphereMesh = Mona::Mesh::sphereMeshData();
+		aiMesh* sphereMesh = Mona::Mesh::cubeMeshData();
 		meshes[2 * i] = sphereMesh;
 		// add bone
 		aiBone** jointBones = new aiBone* [1];
@@ -125,10 +131,12 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
 	float bScale = 0.2f; // base scale
-	float flLen = 6.0f; // first link relative length
-	float flThin = 0.8f; // make first link thinner
+	float flLen = 2.0f; // first link relative length
+	float flThin = 0.5f; // make first link thinner
 	float scaleDown = 0.8f; // reduce size of joints and links further in the chain
 	float linkCurrentLength = bScale * flLen;
+	float linkCurrentBase = 0.0f;
+	// joint
 	aiVector3D scaling = aiVector3D(bScale, bScale, bScale); // escalamiento base
 	aiQuaternion rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
 	aiVector3D translation = aiVector3D(0.0f, 0.0f, 0.0f);
@@ -138,14 +146,14 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// set inverseBindMat
 	meshes[0]->mBones[0]->mOffsetMatrix = finalJointTransform.Inverse();
 	// link
-	scaling = aiVector3D(flThin, flLen, flThin); // escalamiento base
+	scaling = aiVector3D(1.0f, 1.0f, 1.0f); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-	translation = aiVector3D(0.0f, (bScale * flLen) / 2,0.0f ); // dejamos la base del primer link en (0,0,0)
+	translation = aiVector3D(0.0f, 0.0f, 8.0f); // dejamos la base del primer link en (0,0,0)
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
 	// set inverseBindMat
-	meshes[1]->mBones[0]->mOffsetMatrix = (finalLinkTransform*finalJointTransform).Inverse();
+	meshes[1]->mBones[0]->mOffsetMatrix = mat_identity();//(finalLinkTransform*finalJointTransform).Inverse();
 
 	// acc transform
 	aiMatrix4x4 accTransform = finalLinkTransform * finalJointTransform;
@@ -155,45 +163,47 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 accLinkTransform = linkTransform;
 	// joint 
 	configEndEffector = false;
-	for (i = 1; i <= numOfSegments; i++) {
-		if (i == numOfSegments) {
-			configEndEffector = true;
-			scaleDown = 1.0f;
-		}
-		// joint
-		scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
-		rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-		translation = aiVector3D(0.0f, linkCurrentLength, 0.0f);
-		jointTransform = aiMatrix4x4(scaling, rotation, translation);
-		finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();
-		nodes[2 * i]->mTransformation = finalJointTransform;
-		// update acc transform
-		accTransform = finalJointTransform * accTransform;
-		// set inverseBindMat
-		meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
-		// update acc joint transform
-		accJointTransform = jointTransform * accJointTransform;
-		
-		if (!configEndEffector) {
-			// link
-			scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
-			rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-			translation = aiVector3D(0.0f, linkCurrentLength, 0.0f);
-			linkTransform = aiMatrix4x4(scaling, rotation, translation);
-			finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
-			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
-			// update acc transform
-			accTransform = finalLinkTransform * accTransform;
-			// set inverseBindMat
-			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
-			// update acc link transform
-			accLinkTransform = linkTransform * accLinkTransform;
+	//for (i = 1; i <= numOfSegments; i++) {
+	//	if (i == numOfSegments) {
+	//		configEndEffector = true;
+	//		scaleDown = 0.01f;
+	//	}
+	//	// joint
+	//	float moveUpwards = linkCurrentBase * scaleDown + linkCurrentLength * (1 - scaleDown) + linkCurrentLength;
+	//	scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
+	//	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
+	//	translation = aiVector3D(0.0f, 0.0f, moveUpwards);
+	//	jointTransform = aiMatrix4x4(scaling, rotation, translation);
+	//	finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();
+	//	nodes[2 * i]->mTransformation = finalJointTransform;
+	//	// update acc transform
+	//	accTransform = finalJointTransform * accTransform;
+	//	// set inverseBindMat
+	//	meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+	//	// update acc joint transform
+	//	accJointTransform = jointTransform * accJointTransform;
+	//	
+	//	if (!configEndEffector) {
+	//		// link
+	//		scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
+	//		rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
+	//		translation = aiVector3D(0.0f, 0.0f, moveUpwards);
+	//		linkTransform = aiMatrix4x4(scaling, rotation, translation);
+	//		finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
+	//		nodes[2 * i + 1]->mTransformation = finalLinkTransform;
+	//		// update acc transform
+	//		accTransform = finalLinkTransform * accTransform;
+	//		// set inverseBindMat
+	//		meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+	//		// update acc link transform
+	//		accLinkTransform = linkTransform * accLinkTransform;
 
-			// update link length
-			linkCurrentLength = linkCurrentLength * scaleDown;
-		}
+	//		// update link length
+	//		linkCurrentLength = linkCurrentLength * scaleDown;
+	//		linkCurrentBase = linkCurrentBase + moveUpwards;
+	//	}
 
-	}
+	//}
 	// animacion base
 	aiAnimation** animations = new aiAnimation* [1];
 	animations[0] = new aiAnimation();
@@ -269,7 +279,7 @@ public:
 		auto skinnedMesh = meshManager.LoadSkinnedMesh(skeleton, m_chainScene, "chainSkinnedMesh");
 		m_chainBaseAnimation = animationManager.LoadAnimationClip("chainBaseAnimation", skeleton, m_chainScene);
 		auto materialPtr = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat, true));
-		materialPtr->SetDiffuseColor(glm::vec3(0.3f, 0.3f, 0.75f));
+		materialPtr->SetDiffuseColor(glm::vec3(0.8f, 0.3f, 0.75f));
 		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMesh, m_chainBaseAnimation, materialPtr);
 	}
 

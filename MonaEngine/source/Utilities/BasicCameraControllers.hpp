@@ -11,7 +11,7 @@ namespace Mona {
         {
 			m_transform = world.AddComponent<TransformComponent>(*this);
 			m_camera = world.AddComponent<CameraComponent>(*this);
-			m_transform->Translate(glm::vec3(0.0f, -5.0f, 0.0f));
+			m_transform->Translate(glm::vec3(0.0f, -5.0f, 10.0f));
 			auto& input = world.GetInput();
 			glm::vec2 res = world.GetWindow().GetWindowDimensions();
 			screenPos = glm::vec2(1 / res.x, 1 / res.y) * glm::vec2(input.GetMousePosition());
@@ -63,7 +63,7 @@ namespace Mona {
         }
     private:
 		bool m_active = true;
-		float m_cameraSpeed = 2.0f;
+		float m_cameraSpeed = 3.0f;
 		float m_rollSpeed = 1.5f;
 		float m_rotationSpeed = 1.5f;
 		TransformHandle m_transform;
