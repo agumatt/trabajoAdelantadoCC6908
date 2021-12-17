@@ -16,8 +16,8 @@ aiMatrix4x4 mat_identity() {
 aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
-	int numOfMeshes = numOfSegments * 2 + 1;
-	int numOfNodes = numOfSegments * 2 + 1;
+	int numOfMeshes = numOfSegments * 2; //+ 1; // debug, se saca el end effector
+	int numOfNodes = numOfSegments * 2; //+ 1; // debug, se saca el end effector
 	aiMesh** meshes = new aiMesh*[numOfMeshes]; // meshes para agregar a la escena
 	// create vector with nodes. nombramos nodos y huesos correspondientes con indice de asignacion
 	aiNode** nodes = new aiNode*[numOfNodes];
@@ -30,6 +30,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		if (i == numOfSegments) {
 			configEndEffector = true;
 			jointName = "endEffector";
+			break; // debug, se saca el end effector
 		}
 		// create joint node
 		aiNode* jointNode = new aiNode(jointName);
@@ -117,17 +118,20 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	nodes[0]->mChildren = rootChildren;
 	nodes[0]->mNumChildren = 1;
 	nodes[0]->mParent = nullptr;
-	for (i = 1; i < 2 * numOfSegments; i++) {
+	/*for (i = 1; i < 2 * numOfSegments; i++) {
 		aiNode** children = new aiNode * [1];
 		children[0] = nodes[i+1];
 		nodes[i]->mChildren = children;
 		nodes[i]->mNumChildren = 1;
 		nodes[i]->mParent = nodes[i - 1];
-	}
+	}*/
 	// para el end-effector
-	nodes[2 * numOfSegments]->mChildren = nullptr;
+	nodes[1]->mChildren = nullptr;
+	nodes[1]->mNumChildren = 0;
+	nodes[1]->mParent = nodes[0];
+	/*nodes[2 * numOfSegments]->mChildren = nullptr;
 	nodes[2 * numOfSegments]->mNumChildren = 0;
-	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
+	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];*/
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
 	float bScale = 0.2f; // base scale
@@ -144,7 +148,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 finalJointTransform = jointTransform;
 	nodes[0]->mTransformation = finalJointTransform;
 	// set inverseBindMat
-	meshes[0]->mBones[0]->mOffsetMatrix = finalJointTransform.Inverse();
+	meshes[0]->mBones[0]->mOffsetMatrix = finalJointTransform;
 	// link
 	scaling = aiVector3D(1.0f, 1.0f, 1.0f); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -153,7 +157,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
 	// set inverseBindMat
-	meshes[1]->mBones[0]->mOffsetMatrix = mat_identity();//(finalLinkTransform*finalJointTransform).Inverse();
+	meshes[1]->mBones[0]->mOffsetMatrix = finalLinkTransform*finalJointTransform;
 
 	// acc transform
 	aiMatrix4x4 accTransform = finalLinkTransform * finalJointTransform;
@@ -209,7 +213,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	animations[0] = new aiAnimation();
 	animations[0]->mTicksPerSecond = 10.0f;
 	animations[0]->mDuration = animDuration* animations[0]->mTicksPerSecond;
-	animations[0]->mNumChannels = numOfNodes;
+	animations[0]->mNumChannels = numOfNodes; 
 	aiNodeAnim** channels = new aiNodeAnim*[animations[0]->mNumChannels];
 
 	// pasamos por cada nodo
