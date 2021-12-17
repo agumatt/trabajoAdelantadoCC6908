@@ -13,7 +13,7 @@ namespace Mona {
 		Assimp::Importer importer;
 		unsigned int postProcessFlags = aiProcess_Triangulate;
 		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
-		if (paramScene!=nullptr && !impScene)
+		if (paramScene==nullptr && !impScene)
 		{
 			MONA_LOG_ERROR("Skeleton Error: Failed to open file with path {0}", filePath);
 			return;

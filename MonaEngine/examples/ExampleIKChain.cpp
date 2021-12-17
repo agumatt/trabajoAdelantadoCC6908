@@ -215,6 +215,7 @@ class AnimatedChain :public Mona::GameObject {
 private:
 	aiScene* m_chainScene;
 	Mona::SkeletalMeshHandle m_skeletalMesh;
+	Mona::TransformHandle m_transform;
 
 private:
 	void SetTargetPosition(const glm::vec3 position) {}
@@ -236,15 +237,22 @@ public:
 		int numOfSegments = 10;
 		float animDuration = 1.5f;
 		m_chainScene = animatedChainScene(numOfSegments, animDuration);
+		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
+		std::cout << "hola1" << std::endl;
 		Mona::Skeleton skeleton = Mona::Skeleton(m_chainScene);
+		std::cout << "hola2" << std::endl;
 		std::shared_ptr<Mona::Skeleton> skeletonPtr = std::shared_ptr<Mona::Skeleton>(&skeleton);
+		std::cout << "hola3" << std::endl;
 		Mona::SkinnedMesh skinnedMesh = Mona::SkinnedMesh(skeletonPtr, m_chainScene);
+		std::cout << "hola4" << std::endl;
 		std::shared_ptr<Mona::SkinnedMesh> skinnedMeshPtr = std::shared_ptr<Mona::SkinnedMesh>(&skinnedMesh);
+		std::cout << "hola5" << std::endl;
 		Mona::AnimationClip animationClip = Mona::AnimationClip(m_chainScene, skeletonPtr);
+		std::cout << "hola6" << std::endl;
 		std::shared_ptr<Mona::AnimationClip> animationClipPtr = std::shared_ptr<Mona::AnimationClip>(&animationClip);
-		//Mona::Material material = world.CreateMaterial(Mona::MaterialType::DiffuseFlat);
+		std::cout << "hola7" << std::endl;
 		auto materialPtr = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
-		//materialPtr->SetDiffuseColor(glm::vec3(0.3f, 0.3f, 0.75f));
+		materialPtr->SetDiffuseColor(glm::vec3(0.3f, 0.3f, 0.75f));
 		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMeshPtr, animationClipPtr, materialPtr);
 	}
 

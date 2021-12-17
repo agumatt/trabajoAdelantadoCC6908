@@ -52,7 +52,7 @@ namespace Mona {
 		unsigned int postProcessFlags = flipUvs ? aiProcess_FlipUVs : 0;
 		postProcessFlags |= aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace;
 		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
-		if (paramScene!=nullptr && !impScene) {
+		if (paramScene==nullptr && !impScene) {
 			MONA_LOG_ERROR("SkinnedMesh Error: Failed to open file with path {0}", filePath);
 			return;
 		}

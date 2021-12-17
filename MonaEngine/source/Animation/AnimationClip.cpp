@@ -16,7 +16,7 @@ namespace Mona {
 		Assimp::Importer importer;
 		unsigned int postProcessFlags = aiProcess_Triangulate;
 		const aiScene* impScene = importer.ReadFile(filePath, postProcessFlags);
-		if (paramScene!=nullptr && (!impScene || impScene->mNumAnimations == 0))
+		if (paramScene==nullptr && (!impScene || impScene->mNumAnimations == 0))
 		{
 			MONA_LOG_ERROR("AnimationClip Error: Failed to open file with path {0}", filePath);
 			return;
