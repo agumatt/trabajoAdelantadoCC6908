@@ -2,6 +2,8 @@
 #include "Rendering/DiffuseFlatMaterial.hpp"
 #include "Rendering/UnlitFlatMaterial.hpp"
 #include "Animation/SkinnedMesh.hpp"
+#include "Utilities/BasicCameraControllers.hpp"
+#include <imgui.h>
 #include "iostream"
 
 
@@ -122,7 +124,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
-	float bScale = 1.0f; // base scale
+	float bScale = 0.2f; // base scale
 	float flLen = 6.0f; // first link relative length
 	float flThin = 0.8f; // make first link thinner
 	float scaleDown = 0.8f; // reduce size of joints and links further in the chain
@@ -138,7 +140,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// link
 	scaling = aiVector3D(flThin, flLen, flThin); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-	translation = aiVector3D(0.0f, (bScale * flLen) / 2, 0.0f); // dejamos la base del primer link en (0,0,0)
+	translation = aiVector3D(0.0f, (bScale * flLen) / 2,0.0f ); // dejamos la base del primer link en (0,0,0)
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
@@ -255,7 +257,7 @@ public:
 		UpdateAnimationState();
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
-		int numOfSegments = 10;
+		int numOfSegments = 1;
 		float animDuration = 1.5f;
 		m_chainScene = animatedChainScene(numOfSegments, animDuration);
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
@@ -272,16 +274,6 @@ public:
 	}
 
 };
-
-Mona::CameraHandle CreateCamera(Mona::World& world) {
-	auto camera = world.CreateGameObject<Mona::GameObject>();
-	auto cameraTransform = world.AddComponent<Mona::TransformComponent>(camera);
-	cameraTransform->SetTranslation(glm::vec3(0.0f, -12.0f, 7.0f));
-	cameraTransform->Rotate(glm::vec3(-1.0f, 0.0f, 0.0f), 0.7f);
-	auto cameraComp = world.AddComponent<Mona::CameraComponent>(camera);
-	world.SetMainCamera(cameraComp);
-	return cameraComp;
-}
 
 void CreatePlane(Mona::World& world) {
 	auto plane = world.CreateGameObject<Mona::GameObject>();
@@ -312,19 +304,77 @@ public:
 	ExampleIKChain() = default;
 	~ExampleIKChain() = default;
 	virtual void UserStartUp(Mona::World& world) noexcept override {
-		world.SetAmbientLight(glm::vec3(0.1f));
-		CreateCamera(world);
+		MONA_LOG_INFO("Starting App: ExampleIKChain");
+		world.SetAmbientLight(glm::vec3(0.8f));
 		CreatePlane(world);
 		world.CreateGameObject<AnimatedChain>();
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 10.0f, glm::radians(-45.0f));
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 10.0f, glm::radians(-135.0f));
+
+		// input/camera set up
+		auto& eventManager = world.GetEventManager();
+		eventManager.Subscribe(m_windowResizeSubcription, this, &ExampleIKChain::OnWindowResize);
+		eventManager.Subscribe(m_debugGUISubcription, this, &ExampleIKChain::OnDebugGUIEvent);
+		m_camera = world.CreateGameObject<Mona::BasicPerspectiveCamera>();
+		//world.AddComponent<Mona::SpotLightComponent>(m_camera, glm::vec3(100.0f), 15.0f, glm::radians(25.0f), glm::radians(37.0f));
+		world.SetMainCamera(world.GetComponentHandle<Mona::CameraComponent>(m_camera));
+		world.GetInput().SetCursorType(Mona::Input::CursorType::Disabled);
+
 	}
 
 	virtual void UserShutDown(Mona::World& world) noexcept override {
+		MONA_LOG_INFO("ShuttingDown User App: ExampleIKChain");
+		auto& eventManager = world.GetEventManager();
+		eventManager.Unsubscribe(m_debugGUISubcription);
+		eventManager.Unsubscribe(m_windowResizeSubcription);
 	}
 	virtual void UserUpdate(Mona::World& world, float timeStep) noexcept override {
-
+		auto& input = world.GetInput();
+		auto& window = world.GetWindow();
+		if (input.IsKeyPressed(MONA_KEY_G))
+		{
+			window.SetFullScreen(true);
+		}
+		else if (input.IsKeyPressed(MONA_KEY_H))
+		{
+			window.SetFullScreen(false);
+		}
+		else if (input.IsKeyPressed(MONA_KEY_J))
+		{
+			window.SetWindowDimensions(glm::ivec2(1000, 1000));
+		}
+		else if (input.IsKeyPressed(MONA_KEY_1)) {
+			m_camera->SetActive(false);
+			input.SetCursorType(Mona::Input::CursorType::Normal);
+		}
+		else if (input.IsKeyPressed(MONA_KEY_2)) {
+			m_camera->SetActive(true);
+			input.SetCursorType(Mona::Input::CursorType::Disabled);
+		}
+		else if (input.IsKeyPressed(MONA_KEY_ESCAPE)) {
+			world.EndApplication();
+		}
 	}
+
+	void OnDebugGUIEvent(const Mona::DebugGUIEvent& event) {
+		ImGui::Begin("Scene Options:");
+		static bool selected[3] = { false, false, false };
+		ImGui::End();
+	}
+
+	void OnWindowResize(const Mona::WindowResizeEvent& event)
+	{
+		MONA_LOG_INFO("A WindowResizeEvent has ocurred! {0} {1}", event.width, event.height);
+	}
+
+private:
+	Mona::SubscriptionHandle m_windowResizeSubcription;
+	Mona::SubscriptionHandle m_debugGUISubcription;
+	Mona::GameObjectHandle<Mona::BasicPerspectiveCamera> m_camera;
+	float somefloat = 0.0f;
+	int m_currentMaterialIndex;
+
+
 
 };
 
