@@ -483,22 +483,22 @@ namespace Mona {
 		aiMesh* cubeMesh = new aiMesh();
 		int numVertices = rawVertices.size();
 		int numFaces = rawFaces.size();
-		std::vector<aiVector3D>* vertices = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* normals = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* UVs = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* tangents = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* bitangents = new std::vector<aiVector3D>;
-		std::vector<aiFace>* faces = new std::vector<aiFace>;
+
+		aiVector3D* vertices = new aiVector3D[numVertices];
+		aiVector3D* normals = new aiVector3D[numVertices];
+		aiVector3D* UVs = new aiVector3D[numVertices];
+		aiVector3D* tangents = new aiVector3D[numVertices];
+		aiVector3D* bitangents = new aiVector3D[numVertices];
+		aiFace* faces = new aiFace[numFaces];
 
 		unsigned int i;
 		for (i = 0; i < numVertices; i++) {
 			std::vector<float> v = rawVertices[i];
-			(*vertices).emplace_back(aiVector3D(v[0], v[1], v[2]));
-			(*normals).emplace_back(aiVector3D(v[3], v[4], v[5]));
-			//(*numUVComponents).emplace_back(2);
-			(*UVs).emplace_back(aiVector3D(v[6], v[7], 0.0f));
-			(*tangents).emplace_back(aiVector3D(v[8], v[9], v[10]));
-			(*bitangents).emplace_back(aiVector3D(v[11], v[12], v[13]));
+			vertices[i] = aiVector3D(v[0], v[1], v[2]);
+			normals[i] = aiVector3D(v[3], v[4], v[5]);
+			UVs[i] = aiVector3D(v[6], v[7], 0.0f);
+			tangents[i] = aiVector3D(v[8], v[9], v[10]);
+			bitangents[i] = aiVector3D(v[11], v[12], v[13]);
 
 		}
 		for (i = 0; i < numFaces; i++) {
@@ -506,15 +506,15 @@ namespace Mona {
 			aiFace* face = new aiFace();
 			face->mNumIndices = 3;
 			face->mIndices = &currRawFace[0];
-			(*faces).emplace_back(*face);
+			faces[i] = *face;
 		}
-		cubeMesh->mVertices = &(*vertices)[0];
-		cubeMesh->mNormals = &(*normals)[0];
+		cubeMesh->mVertices = vertices;
+		cubeMesh->mNormals = normals;
 		cubeMesh->mNumUVComponents[0] = 2;
-		cubeMesh->mTextureCoords[0] = &(*UVs)[0];
-		cubeMesh->mTangents = &(*tangents)[0];
-		cubeMesh->mBitangents = &(*bitangents)[0];
-		cubeMesh->mFaces = &(*faces)[0];
+		cubeMesh->mTextureCoords[0] = UVs;
+		cubeMesh->mTangents = tangents;
+		cubeMesh->mBitangents = bitangents;
+		cubeMesh->mFaces = faces;
 		cubeMesh->mNumFaces = numFaces;
 		cubeMesh->mNumVertices = numVertices;
 		return cubeMesh;
@@ -522,12 +522,7 @@ namespace Mona {
 
 	aiMesh* Mesh::sphereMeshData() {
 		aiMesh* sphereMesh = new aiMesh();
-		std::vector<aiVector3D>* vertices = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* normals = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* UVs = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* tangents = new std::vector<aiVector3D>;
-		std::vector<aiVector3D>* bitangents = new std::vector<aiVector3D>;
-		std::vector<aiFace>* faces = new std::vector<aiFace>;
+		
 
 		unsigned int stackCount = 16;
 		unsigned int sectorCount = 32;
@@ -536,9 +531,17 @@ namespace Mona {
 		float stackStep = PI / stackCount;
 		float sectorAngle, stackAngle;
 		float radius = 1.0f;
+		int numVertices = (stackCount+1)*(sectorCount+1);
+		int numFaces = 960; // falta realizar calculo formal segun variables anteriores.
 
-		float x, y, z;
-		int numVertices = 0;
+		aiVector3D* vertices = new aiVector3D[numVertices];
+		aiVector3D* normals = new aiVector3D[numVertices];
+		aiVector3D* UVs = new aiVector3D[numVertices];
+		aiVector3D* tangents = new aiVector3D[numVertices];
+		aiVector3D* bitangents = new aiVector3D[numVertices];
+		aiFace* faces = new aiFace[numFaces];
+
+		float x, y, z;		
 		for (unsigned int i = 0; i <= stackCount; i++)
 		{
 			stackAngle = PI / 2.0f - i * stackStep;
@@ -554,33 +557,31 @@ namespace Mona {
 				y = cosStackAngle * sinSectorAngle;
 
 				// position
-				(*vertices).emplace_back(aiVector3D(radius * x, radius * y, radius * z));
+				vertices[i*(sectorCount+1) + j] = aiVector3D(radius * x, radius * y, radius * z);
 				// normal
-				(*normals).emplace_back(aiVector3D(x, y, z));
+				normals[i*(sectorCount+1) + j] = aiVector3D(x, y, z);
 				//uv
 				float u = (float)j / (float)sectorCount;
 				float v = (float)i / (float)stackCount;
-				(*UVs).push_back(aiVector3D(u, v, 0.0f));
+				UVs[i * (sectorCount+1) + j] = aiVector3D(u, v, 0.0f);
 				// tangent
 				//Tangent dr/dSectorAngle
 				float tx = -sinSectorAngle;
 				float ty = cosSectorAngle;
 				float tz = 0.0f;
-				(*tangents).emplace_back(aiVector3D(tx, ty, tz));
+				tangents[i * (sectorCount+1) + j] = aiVector3D(tx, ty, tz);
 				// bitangent
 				//Bitangent dr/dStackAngle
 				float bx = -sinStackAngle * cosSectorAngle;
 				float by = -sinStackAngle * sinSectorAngle;
 				float bz = cosStackAngle;
-				(*bitangents).emplace_back(aiVector3D(bx, by, bz));
-
-				numVertices += 1;
+				bitangents[i * (sectorCount+1) + j] = aiVector3D(bx, by, bz);
 			}
 
 		}
 
-		int numFaces = 0;
 		unsigned int k1, k2;
+		int addedFaces = 0;
 		for (unsigned int i = 0; i < stackCount; ++i)
 		{
 			k1 = i * (sectorCount + 1);
@@ -590,32 +591,38 @@ namespace Mona {
 			{
 				if (i != 0)
 				{
-					unsigned int faceIndices1[3] = { k1, k2, k1 + 1 };
+					unsigned int* faceIndices1 = new unsigned int[3];
+					faceIndices1[0] = k1;
+					faceIndices1[1] = k2;
+					faceIndices1[2] = k1 + 1;
 					aiFace* face1 = new aiFace();
 					face1->mNumIndices = 3;
 					face1->mIndices = faceIndices1;
-					(*faces).push_back(*face1);
-					numFaces += 1;
+					faces[addedFaces] = *face1;
+					addedFaces += 1;
 				}
 
 				if (i != (stackCount - 1))
 				{
-					unsigned int faceIndices2[3] = { k1 + 1, k2, k2 + 1 };
+					unsigned int* faceIndices2 = new unsigned int[3];
+					faceIndices2[0] = k1+1;
+					faceIndices2[1] = k2;
+					faceIndices2[2] = k2 + 1;
 					aiFace* face2 = new aiFace();
 					face2->mNumIndices = 3;
 					face2->mIndices = faceIndices2;
-					(*faces).push_back(*face2);
-					numFaces += 1;
+					faces[addedFaces] = *face2;
+					addedFaces += 1;
 				}
 			}
 		}
-		sphereMesh->mVertices = &(*vertices)[0];
-		sphereMesh->mNormals = &(*normals)[0];
+		sphereMesh->mVertices = vertices;
+		sphereMesh->mNormals = normals;
 		sphereMesh->mNumUVComponents[0] = 2;
-		sphereMesh->mTextureCoords[0] = &(*UVs)[0];
-		sphereMesh->mTangents = &(*tangents)[0];
-		sphereMesh->mBitangents = &(*bitangents)[0];
-		sphereMesh->mFaces = &(*faces)[0];
+		sphereMesh->mTextureCoords[0] = UVs;
+		sphereMesh->mTangents = tangents;
+		sphereMesh->mBitangents = bitangents;
+		sphereMesh->mFaces = faces;
 		sphereMesh->mNumFaces = numFaces;
 		sphereMesh->mNumVertices = numVertices;
 

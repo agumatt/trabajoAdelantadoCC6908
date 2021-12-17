@@ -8,6 +8,7 @@
 #include <stack>
 #include <glad/glad.h>
 #include "Skeleton.hpp"
+#include <iostream>
 namespace Mona {
 
 	struct SkeletalMeshVertex {
@@ -64,7 +65,7 @@ namespace Mona {
 		}
 		const aiScene* scene = sceneChoice[choice];
 		
-
+		std::cout << "skm1" << std::endl;
 		//Comienzo del proceso de pasar desde la escena de assimp a un formato interno
 		std::vector<SkeletalMeshVertex> vertices;
 		std::vector<unsigned int> faces;
@@ -76,10 +77,10 @@ namespace Mona {
 			numVertices += scene->mMeshes[i]->mNumVertices;
 			numFaces += scene->mMeshes[i]->mNumFaces;
 		}
-
 		vertices.reserve(numVertices);
 		faces.reserve(numFaces);
 
+		std::cout << "skm2" << std::endl;
 		//El grafo de la escena se reccorre usando DFS (Depth Search First) usando dos stacks.
 		std::stack<const aiNode*> sceneNodes;
 		std::stack<aiMatrix4x4> sceneTransforms;
@@ -100,17 +101,21 @@ namespace Mona {
 			currentInvTranspose.Inverse().Transpose();
 			sceneNodes.pop();
 			sceneTransforms.pop();
+			std::cout << "skm3" << std::endl;
 			for (uint32_t j = 0; j < currentNode->mNumMeshes; j++) {
 				const aiMesh* meshOBJ = scene->mMeshes[currentNode->mMeshes[j]];
+				std::cout << "skm3.1" << std::endl;
 				for (uint32_t i = 0; i < meshOBJ->mNumVertices; i++) {
+					std::cout << "skm3.2" << std::endl;
 					aiVector3D position = currentTransform * meshOBJ->mVertices[i];
+					std::cout << "skm3.3" << std::endl;
 					aiVector3D tangent = currentTransform * meshOBJ->mTangents[i];
 					tangent.Normalize();
 					aiVector3D normal = currentInvTranspose * meshOBJ->mNormals[i];
 					normal.Normalize();
 					aiVector3D bitangent = currentTransform * meshOBJ->mBitangents[i];
 					bitangent.Normalize();
-
+					std::cout << "skm4" << std::endl;
 					SkeletalMeshVertex vertex;
 					vertex.position = AssimpToGlmVec3(position);
 					vertex.normal = AssimpToGlmVec3(normal);
@@ -128,7 +133,7 @@ namespace Mona {
 
 					vertices.push_back(vertex);
 				}
-
+				std::cout << "skm5" << std::endl;
 				for (uint32_t i = 0; i < meshOBJ->mNumFaces; i++) {
 					const aiFace& face = meshOBJ->mFaces[i];
 					MONA_ASSERT(face.mNumIndices == 3, "SkinnedMesh Error: Can load meshes with faces that have {0} vertices", face.mNumIndices);
@@ -136,7 +141,7 @@ namespace Mona {
 					faces.push_back(face.mIndices[1] + offset);
 					faces.push_back(face.mIndices[2] + offset);
 				}
-
+				std::cout << "skm6" << std::endl;
 				for (uint32_t i = 0; i < meshOBJ->mNumBones; i++)
 				{
 					const aiBone* bone = meshOBJ->mBones[i];
@@ -149,14 +154,14 @@ namespace Mona {
 
 
 
-
+			std::cout << "skm7" << std::endl;
 			for (uint32_t j = 0; j < currentNode->mNumChildren; j++) {
 				//Pusheamos los hijos y acumulamos la matrix de transformaci�n
 				sceneNodes.push(currentNode->mChildren[j]);
 				sceneTransforms.push(currentNode->mChildren[j]->mTransformation * currentTransform);
 			}
 		}
-
+		std::cout << "skm8" << std::endl;
 		//Recorremos la escena nuevamente ahora para llenar los datos de la piel del la malla
 		sceneNodes.push(scene->mRootNode);
 		std::vector<uint32_t> boneCounts;

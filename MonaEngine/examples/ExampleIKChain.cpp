@@ -8,9 +8,11 @@
 aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
-	std::vector<aiMesh*>* meshes = new std::vector<aiMesh*>; // meshes para agregar a la escena
+	int numOfMeshes = numOfSegments * 2 + 1;
+	int numOfNodes = numOfSegments * 2 + 1;
+	aiMesh** meshes = new aiMesh*[numOfMeshes]; // meshes para agregar a la escena
 	// create vector with nodes. nombramos nodos y huesos correspondientes con indice de asignacion
-	std::vector<aiNode*>* nodes = new std::vector<aiNode*>;
+	aiNode** nodes = new aiNode*[numOfNodes];
 	// hay una malla por cada nodo (esfera(joint) o cubo(link))
 	// el nodo 0_joint será el nodo raiz de la escena.
 	bool configEndEffector = false;
@@ -25,13 +27,14 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		}
 		// create joint node
 		aiNode* jointNode = new aiNode(jointName);
-		(*nodes).push_back(jointNode);
-		unsigned int meshIndex = 2 * i;
-		(*nodes).back()->mMeshes = &meshIndex;
-		(*nodes).back()->mNumMeshes = 1;
+		nodes[2*i] = jointNode;
+		unsigned int* jointMeshIndex = new unsigned int();
+		*jointMeshIndex = 2 * i;
+		nodes[2 * i]->mMeshes = jointMeshIndex;
+		nodes[2 * i]->mNumMeshes = 1;
 		// create joint mesh
 		aiMesh* sphereMesh = Mona::Mesh::sphereMeshData();
-		(*meshes).push_back(sphereMesh);
+		meshes[2 * i] = sphereMesh;
 		// add bone
 		aiBone* jointBone = new aiBone();
 		jointBone->mName = jointName;
@@ -55,19 +58,20 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			(*jointWeights).push_back(*w);
 		}
 		jointBone->mWeights = &(*jointWeights)[0];
-		(*meshes).back()->mBones = &jointBone;
+		meshes[2 * i]->mBones = &jointBone;
 
 		if (!configEndEffector) { // si llegamos al endEffector, no hace falta agregar un link luego.
 			// create link node
 			std::string linkName = std::to_string(i) + "_link";
 			aiNode* linkNode = new aiNode(linkName);
-			(*nodes).push_back(linkNode);
-			meshIndex = 2 * i + 1;
-			(*nodes).back()->mMeshes = &meshIndex;
-			(*nodes).back()->mNumMeshes = 1;
+			nodes[2 * i + 1] = linkNode;
+			unsigned int* linkMeshIndex = new unsigned int();
+			*linkMeshIndex = 2 * i + 1;
+			nodes[2 * i + 1]->mMeshes = linkMeshIndex;
+			nodes[2 * i + 1]->mNumMeshes = 1;
 			// create link mesh
 			aiMesh* cubeMesh = Mona::Mesh::cubeMeshData();
-			(*meshes).push_back(cubeMesh);
+			meshes[2 * i + 1] = cubeMesh;
 			// add bone
 			aiBone* linkBone = new aiBone();
 			linkBone->mName = linkName;
@@ -91,26 +95,26 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			}
 			linkBone->mWeights = &(*linkWeights)[0];
 			linkBone->mOffsetMatrix;
-			(*meshes).back()->mBones = &linkBone;
+			meshes[2 * i + 1]->mBones = &linkBone;
 		}
 	}
 	// agregamos valores de mallas a escena
-	scene->mNumMeshes = (*meshes).size();
-	scene->mMeshes = &(*meshes)[0];
+	scene->mNumMeshes = numOfMeshes;
+	scene->mMeshes = meshes;
 	// asignamos relaciones padre-hijo
-	scene->mRootNode = (*nodes)[0];
-	(*nodes)[0]->mChildren = &(*nodes)[1];
-	(*nodes)[0]->mNumChildren = 1;
-	(*nodes)[0]->mParent = nullptr;
+	scene->mRootNode = nodes[0];
+	nodes[0]->mChildren = &nodes[1];
+	nodes[0]->mNumChildren = 1;
+	nodes[0]->mParent = nullptr;
 	for (i = 1; i < 2 * numOfSegments; i++) {
-		(*nodes)[i]->mChildren = &(*nodes)[i + 1];
-		(*nodes)[i]->mNumChildren = 1;
-		(*nodes)[i]->mParent = (*nodes)[i - 1];
+		nodes[i]->mChildren = &nodes[i + 1];
+		nodes[i]->mNumChildren = 1;
+		nodes[i]->mParent = nodes[i - 1];
 	}
 	// para el end-effector
-	(*nodes)[2 * numOfSegments]->mChildren = nullptr;
-	(*nodes)[2 * numOfSegments]->mNumChildren = 0;
-	(*nodes)[2 * numOfSegments]->mParent = (*nodes)[2 * numOfSegments - 1];
+	nodes[2 * numOfSegments]->mChildren = nullptr;
+	nodes[2 * numOfSegments]->mNumChildren = 0;
+	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
 	float bScale = 1.0f; // base scale
@@ -123,14 +127,14 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiVector3D translation = aiVector3D(0.0f, 0.0f, 0.0f);
 	aiMatrix4x4 jointTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalJointTransform = jointTransform;
-	(*nodes)[0]->mTransformation = finalJointTransform;
+	nodes[0]->mTransformation = finalJointTransform;
 	// link
 	scaling = aiVector3D(flThin, flLen, flThin); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
 	translation = aiVector3D(0.0f, (bScale * flLen) / 2, 0.0f); // dejamos la base del primer link en (0,0,0)
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
-	(*nodes)[1]->mTransformation = finalLinkTransform;
+	nodes[1]->mTransformation = finalLinkTransform;
 
 	// acc transform
 	aiMatrix4x4 accTransform = finalLinkTransform * finalJointTransform;
@@ -151,11 +155,11 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		translation = aiVector3D(0.0f, linkCurrentLength, 0.0f);
 		jointTransform = aiMatrix4x4(scaling, rotation, translation);
 		finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();
-		(*nodes)[2 * i]->mTransformation = finalJointTransform;
+		nodes[2 * i]->mTransformation = finalJointTransform;
 		// update acc transform
 		accTransform = finalJointTransform * accTransform;
 		// set inverseBindMat
-		(*meshes)[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+		meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
 		// update acc joint transform
 		accJointTransform = jointTransform * accJointTransform;
 		
@@ -166,11 +170,11 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			translation = aiVector3D(0.0f, linkCurrentLength, 0.0f);
 			linkTransform = aiMatrix4x4(scaling, rotation, translation);
 			finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
-			(*nodes)[2 * i + 1]->mTransformation = finalLinkTransform;
+			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
 			// update acc transform
 			accTransform = finalLinkTransform * accTransform;
 			// set inverseBindMat
-			(*meshes)[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
 			// update acc link transform
 			accLinkTransform = linkTransform * accLinkTransform;
 
@@ -185,12 +189,12 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	scene->mNumAnimations = 1;
 	animation->mTicksPerSecond = 10.0f;
 	animation->mDuration = animDuration* animation->mTicksPerSecond;
-	animation->mNumChannels = (*nodes).size();
+	animation->mNumChannels = numOfNodes;
 	std::vector<aiNodeAnim*>* channels = new std::vector<aiNodeAnim*>;
 
 	// pasamos por cada nodo
 	for (i = 0; i < animation->mNumChannels; i++) {
-		std::string nodeName = ((*nodes)[i]->mName).C_Str();
+		std::string nodeName = (nodes[i]->mName).C_Str();
 		aiNodeAnim* anim = new aiNodeAnim();
 		std::vector<aiVectorKey> pos = {aiVectorKey(0.0f, aiVector3D(0.0f,0.0f,0.0f)), aiVectorKey(animation->mDuration, aiVector3D(0.0f, 0.0f, 0.0f))};
 		std::vector<aiQuatKey> rot = {aiQuatKey(0.0f, aiQuaternion(0.0f, 0.0f, 0.0f)), aiQuatKey(animation->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f))};
