@@ -6,6 +6,7 @@
 #include "../Core/AssimpTransformations.hpp"
 #include "../Core/Log.hpp"
 #include "Skeleton.hpp"
+#include <iostream>
 namespace Mona {
 
 	AnimationClip::AnimationClip(const std::string& filePath,
@@ -35,6 +36,7 @@ namespace Mona {
 		// los tiempos de sus objetos por tickspersecond. Por otro lado, assimp sigue la convencion de que si mTicksPerSecond 
 		// es 0.0 entonces los timeStamps de las muestras de las animaciones estan en segundos y no ticks.
 		float ticksPerSecond = animation->mTicksPerSecond != 0.0f ? animation->mTicksPerSecond : 1.0f;
+		std::cout << "num channels: " << animation->mNumChannels << std::endl;
 		m_duration = animation->mDuration / animation->mTicksPerSecond;
 		m_animationTracks.resize(animation->mNumChannels);
 		m_trackJointNames.reserve(animation->mNumChannels);

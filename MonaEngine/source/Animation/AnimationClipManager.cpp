@@ -19,6 +19,22 @@ namespace Mona {
 		m_animationClipMap.insert({ stringPath, sharedPtr });
 		return sharedPtr;
 	}
+	std::shared_ptr<AnimationClip> AnimationClipManager::LoadAnimationClip(const std::string& name,
+		std::shared_ptr<Skeleton> skeleton, aiScene* scene,
+		bool removeRootMotion) noexcept
+	{
+		//En caso de que ya exista una entrada en el mapa de animaciones con el mismo path, 
+		// entonces se retorna inmediatamente dicha animación.
+		auto it = m_animationClipMap.find(name);
+		if (it != m_animationClipMap.end()) {
+			return it->second;
+		}
+
+		AnimationClip* animationPtr = new AnimationClip(scene, skeleton, removeRootMotion);
+		std::shared_ptr<AnimationClip> sharedPtr = std::shared_ptr<AnimationClip>(animationPtr);
+		m_animationClipMap.insert({ name, sharedPtr });
+		return sharedPtr;
+	}
 	void AnimationClipManager::CleanUnusedAnimationClips() noexcept {
 		/*
 		* Elimina todos los punteros del mapa cuyo conteo de referencias es igual a uno,

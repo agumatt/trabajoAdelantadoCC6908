@@ -533,15 +533,17 @@ namespace Mona {
 		float radius = 1.0f;
 		int numVertices = (stackCount+1)*(sectorCount+1);
 		int numFaces = 960; // falta realizar calculo formal segun variables anteriores.
+		// primer y ultimo vertice no se usan en las caras
 
-		aiVector3D* vertices = new aiVector3D[numVertices];
-		aiVector3D* normals = new aiVector3D[numVertices];
-		aiVector3D* UVs = new aiVector3D[numVertices];
-		aiVector3D* tangents = new aiVector3D[numVertices];
-		aiVector3D* bitangents = new aiVector3D[numVertices];
+		aiVector3D* vertices = new aiVector3D[numVertices-2];
+		aiVector3D* normals = new aiVector3D[numVertices-2];
+		aiVector3D* UVs = new aiVector3D[numVertices-2];
+		aiVector3D* tangents = new aiVector3D[numVertices-2];
+		aiVector3D* bitangents = new aiVector3D[numVertices-2];
 		aiFace* faces = new aiFace[numFaces];
 
-		float x, y, z;		
+		float x, y, z;
+		int addedVertices = 0;
 		for (unsigned int i = 0; i <= stackCount; i++)
 		{
 			stackAngle = PI / 2.0f - i * stackStep;
@@ -555,31 +557,32 @@ namespace Mona {
 				float sinSectorAngle = std::sin(sectorAngle);
 				x = cosStackAngle * cosSectorAngle;
 				y = cosStackAngle * sinSectorAngle;
-
-				// position
-				vertices[i*(sectorCount+1) + j] = aiVector3D(radius * x, radius * y, radius * z);
-				// normal
-				normals[i*(sectorCount+1) + j] = aiVector3D(x, y, z);
-				//uv
-				float u = (float)j / (float)sectorCount;
-				float v = (float)i / (float)stackCount;
-				UVs[i * (sectorCount+1) + j] = aiVector3D(u, v, 0.0f);
-				// tangent
-				//Tangent dr/dSectorAngle
-				float tx = -sinSectorAngle;
-				float ty = cosSectorAngle;
-				float tz = 0.0f;
-				tangents[i * (sectorCount+1) + j] = aiVector3D(tx, ty, tz);
-				// bitangent
-				//Bitangent dr/dStackAngle
-				float bx = -sinStackAngle * cosSectorAngle;
-				float by = -sinStackAngle * sinSectorAngle;
-				float bz = cosStackAngle;
-				bitangents[i * (sectorCount+1) + j] = aiVector3D(bx, by, bz);
+				if (addedVertices != 0 && addedVertices != (numVertices - 1)) {
+					// position
+					vertices[addedVertices-1] = aiVector3D(radius * x, radius * y, radius * z);
+					// normal
+					normals[addedVertices-1] = aiVector3D(x, y, z);
+					//uv
+					float u = (float)j / (float)sectorCount;
+					float v = (float)i / (float)stackCount;
+					UVs[addedVertices-1] = aiVector3D(u, v, 0.0f);
+					// tangent
+					//Tangent dr/dSectorAngle
+					float tx = -sinSectorAngle;
+					float ty = cosSectorAngle;
+					float tz = 0.0f;
+					tangents[addedVertices-1] = aiVector3D(tx, ty, tz);
+					// bitangent
+					//Bitangent dr/dStackAngle
+					float bx = -sinStackAngle * cosSectorAngle;
+					float by = -sinStackAngle * sinSectorAngle;
+					float bz = cosStackAngle;
+					bitangents[addedVertices-1] = aiVector3D(bx, by, bz);
+				}
+				addedVertices += 1;
 			}
 
 		}
-
 		unsigned int k1, k2;
 		int addedFaces = 0;
 		for (unsigned int i = 0; i < stackCount; ++i)
@@ -592,9 +595,9 @@ namespace Mona {
 				if (i != 0)
 				{
 					unsigned int* faceIndices1 = new unsigned int[3];
-					faceIndices1[0] = k1;
-					faceIndices1[1] = k2;
-					faceIndices1[2] = k1 + 1;
+					faceIndices1[0] = k1-1;
+					faceIndices1[1] = k2-1;
+					faceIndices1[2] = k1;
 					aiFace* face1 = new aiFace();
 					face1->mNumIndices = 3;
 					face1->mIndices = faceIndices1;
@@ -605,9 +608,9 @@ namespace Mona {
 				if (i != (stackCount - 1))
 				{
 					unsigned int* faceIndices2 = new unsigned int[3];
-					faceIndices2[0] = k1+1;
-					faceIndices2[1] = k2;
-					faceIndices2[2] = k2 + 1;
+					faceIndices2[0] = k1;
+					faceIndices2[1] = k2-1;
+					faceIndices2[2] = k2;
 					aiFace* face2 = new aiFace();
 					face2->mNumIndices = 3;
 					face2->mIndices = faceIndices2;
@@ -624,7 +627,7 @@ namespace Mona {
 		sphereMesh->mBitangents = bitangents;
 		sphereMesh->mFaces = faces;
 		sphereMesh->mNumFaces = numFaces;
-		sphereMesh->mNumVertices = numVertices;
+		sphereMesh->mNumVertices = numVertices-2;
 
 		return sphereMesh;
 	}

@@ -111,4 +111,22 @@ namespace Mona {
 		return sharedPtr;
 
 	}
+
+	std::shared_ptr<SkinnedMesh> MeshManager::LoadSkinnedMesh(std::shared_ptr<Skeleton> skeleton,aiScene* scene,
+		const std::string& name,
+		bool flipUVs) noexcept
+	{
+		//En caso de que ya exista una entrada en el mapa de mallas para animación con el mismo path, 
+		// entonces se retorna inmediatamente dicha malla.
+		auto it = m_skinnedMeshMap.find(name);
+		if (it != m_skinnedMeshMap.end()) {
+			return it->second;
+		}
+		SkinnedMesh* meshPtr = new SkinnedMesh(skeleton, scene, flipUVs);
+		std::shared_ptr<SkinnedMesh> sharedPtr = std::shared_ptr<SkinnedMesh>(meshPtr);
+		//Antes de retornar la malla recien cargada, insertamos esta al mapa para que cargas futuras sean mucho mas rapidas.
+		m_skinnedMeshMap.insert({ name, sharedPtr });
+		return sharedPtr;
+
+	}
 }

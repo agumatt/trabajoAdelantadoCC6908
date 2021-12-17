@@ -18,12 +18,10 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	bool configEndEffector = false;
 	unsigned int i = 0;
 	for (i = 0; i <= numOfSegments; i++) {
+		std::string jointName = std::to_string(i) + "_joint";
 		if (i == numOfSegments) {
 			configEndEffector = true;
-		}
-		std::string jointName = std::to_string(i) + "_joint";
-		if (configEndEffector) {
-			std::string jointName = "endEffector";
+			jointName = "endEffector";
 		}
 		// create joint node
 		aiNode* jointNode = new aiNode(jointName);
@@ -106,11 +104,15 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	scene->mMeshes = meshes;
 	// asignamos relaciones padre-hijo
 	scene->mRootNode = nodes[0];
-	nodes[0]->mChildren = &nodes[1];
+	aiNode** rootChildren = new aiNode* [1];
+	rootChildren[0] = nodes[1];
+	nodes[0]->mChildren = rootChildren;
 	nodes[0]->mNumChildren = 1;
 	nodes[0]->mParent = nullptr;
 	for (i = 1; i < 2 * numOfSegments; i++) {
-		nodes[i]->mChildren = &nodes[i + 1];
+		aiNode** children = new aiNode * [1];
+		children[0] = nodes[i+1];
+		nodes[i]->mChildren = children;
 		nodes[i]->mNumChildren = 1;
 		nodes[i]->mParent = nodes[i - 1];
 	}
@@ -191,28 +193,26 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 
 	}
 	// animacion base
-	aiAnimation* animation = new aiAnimation();
-	scene->mAnimations = &animation;
-	scene->mNumAnimations = 1;
-	animation->mTicksPerSecond = 10.0f;
-	animation->mDuration = animDuration* animation->mTicksPerSecond;
-	animation->mNumChannels = numOfNodes;
-	aiNodeAnim** channels = new aiNodeAnim*[animation->mNumChannels];
+	aiAnimation** animations = new aiAnimation* [1];
+	animations[0] = new aiAnimation();
+	animations[0]->mTicksPerSecond = 10.0f;
+	animations[0]->mDuration = animDuration* animations[0]->mTicksPerSecond;
+	animations[0]->mNumChannels = numOfNodes;
+	aiNodeAnim** channels = new aiNodeAnim*[animations[0]->mNumChannels];
 
 	// pasamos por cada nodo
-	for (i = 0; i < animation->mNumChannels; i++) {
+	for (i = 0; i < animations[0]->mNumChannels; i++) {
 		std::string nodeName = (nodes[i]->mName).C_Str();
 		aiNodeAnim* anim = new aiNodeAnim();
 		aiVectorKey* pos = new aiVectorKey[2];
 		pos[0] = aiVectorKey(0.0f, aiVector3D(0.0f, 0.0f, 0.0f));
-		pos[1] = aiVectorKey(animation->mDuration, aiVector3D(0.0f, 0.0f, 0.0f));
+		pos[1] = aiVectorKey(animations[0]->mDuration, aiVector3D(0.0f, 0.0f, 0.0f));
 		aiQuatKey* rot = new aiQuatKey[2];
 		rot[0] = aiQuatKey(0.0f, aiQuaternion(0.0f, 0.0f, 0.0f));
-		rot[1] = aiQuatKey(animation->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f));
-
+		rot[1] = aiQuatKey(animations[0]->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f));
 		aiVectorKey* scl = new aiVectorKey[2];
 		scl[0] = aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f));
-		scl[1] = aiVectorKey(animation->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
+		scl[1] = aiVectorKey(animations[0]->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
 		anim->mNodeName = nodeName;
 		anim->mNumPositionKeys = 2;
 		anim->mNumRotationKeys = 2;
@@ -222,7 +222,9 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		anim->mScalingKeys = scl;
 		channels[i] = anim;
 	}
-	animation->mChannels = channels;
+	animations[0]->mChannels = channels;
+	scene->mAnimations = animations;
+	scene->mNumAnimations = 1;
 	
 	return scene;
 }
@@ -234,6 +236,7 @@ private:
 	aiScene* m_chainScene;
 	Mona::SkeletalMeshHandle m_skeletalMesh;
 	Mona::TransformHandle m_transform;
+	std::shared_ptr<Mona::AnimationClip> m_chainBaseAnimation;
 
 private:
 	void SetTargetPosition(const glm::vec3 position) {}
@@ -256,22 +259,16 @@ public:
 		float animDuration = 1.5f;
 		m_chainScene = animatedChainScene(numOfSegments, animDuration);
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
-		std::cout << "hola1" << std::endl;
-		Mona::Skeleton skeleton = Mona::Skeleton(m_chainScene);
-		std::cout << "hola2" << std::endl;
-		std::shared_ptr<Mona::Skeleton> skeletonPtr = std::shared_ptr<Mona::Skeleton>(&skeleton);
-		std::cout << "hola3" << std::endl;
-		Mona::SkinnedMesh skinnedMesh = Mona::SkinnedMesh(skeletonPtr, m_chainScene);
-		std::cout << "hola4" << std::endl;
-		std::shared_ptr<Mona::SkinnedMesh> skinnedMeshPtr = std::shared_ptr<Mona::SkinnedMesh>(&skinnedMesh);
-		std::cout << "hola5" << std::endl;
-		Mona::AnimationClip animationClip = Mona::AnimationClip(m_chainScene, skeletonPtr);
-		std::cout << "hola6" << std::endl;
-		std::shared_ptr<Mona::AnimationClip> animationClipPtr = std::shared_ptr<Mona::AnimationClip>(&animationClip);
-		std::cout << "hola7" << std::endl;
-		auto materialPtr = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
+
+		auto& meshManager = Mona::MeshManager::GetInstance();
+		auto& skeletonManager = Mona::SkeletonManager::GetInstance();
+		auto& animationManager = Mona::AnimationClipManager::GetInstance();
+		auto skeleton = skeletonManager.LoadSkeleton("chainSkeleton", m_chainScene);
+		auto skinnedMesh = meshManager.LoadSkinnedMesh(skeleton, m_chainScene, "chainSkinnedMesh");
+		m_chainBaseAnimation = animationManager.LoadAnimationClip("chainBaseAnimation", skeleton, m_chainScene);
+		auto materialPtr = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat, true));
 		materialPtr->SetDiffuseColor(glm::vec3(0.3f, 0.3f, 0.75f));
-		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMeshPtr, animationClipPtr, materialPtr);
+		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMesh, m_chainBaseAnimation, materialPtr);
 	}
 
 };

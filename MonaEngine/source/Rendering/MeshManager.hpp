@@ -21,6 +21,9 @@ namespace Mona {
 		std::shared_ptr<SkinnedMesh> LoadSkinnedMesh(std::shared_ptr<Skeleton> skeleton,
 			const std::filesystem::path& filePath,
 			bool flipUVs = false) noexcept;
+		std::shared_ptr<SkinnedMesh> LoadSkinnedMesh(std::shared_ptr<Skeleton> skeleton, aiScene* scene,
+			const std::string& name,
+			bool flipUVs = false) noexcept;
 		void CleanUnusedMeshes() noexcept;
 		static MeshManager& GetInstance() noexcept{
 			static MeshManager instance;

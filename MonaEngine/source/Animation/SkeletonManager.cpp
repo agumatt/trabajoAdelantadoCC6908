@@ -16,6 +16,21 @@ namespace Mona {
 		return skeletonSharedPtr;
 	}
 
+	std::shared_ptr<Skeleton> SkeletonManager::LoadSkeleton(const std::string& name, aiScene* scene) noexcept {
+		//En caso de que ya exista una entrada en el mapa de esqueletos con el mismo path, 
+		// entonces se retorna inmediatamente dicho esqueleto.
+		auto it = m_skeletonMap.find(name);
+		if (it != m_skeletonMap.end()) {
+			return it->second;
+		}
+
+		Skeleton* skeletonPtr = new Skeleton(scene);
+		std::shared_ptr<Skeleton> skeletonSharedPtr = std::shared_ptr<Skeleton>(skeletonPtr);
+		m_skeletonMap.insert({ name, skeletonSharedPtr });
+		return skeletonSharedPtr;
+	}
+
+
 	void SkeletonManager::CleanUnusedSkeletons() noexcept {
 		/*
 		* Elimina todos los punteros del mapa cuyo conteo de referencias es igual a uno,
