@@ -36,8 +36,9 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		aiMesh* sphereMesh = Mona::Mesh::sphereMeshData();
 		meshes[2 * i] = sphereMesh;
 		// add bone
-		aiBone* jointBone = new aiBone();
-		jointBone->mName = jointName;
+		aiBone** jointBones = new aiBone* [1];
+		jointBones[0] = new aiBone();
+		jointBones[0]->mName = jointName;
 		std::vector<unsigned int> sphereIndices = {};
 		unsigned int j = 0;
 		for (j = 0; j < sphereMesh->mNumFaces; j++) {
@@ -49,16 +50,17 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		// remove duplicated indices
 		std::sort(sphereIndices.begin(), sphereIndices.end());
 		sphereIndices.erase(std::unique(sphereIndices.begin(), sphereIndices.end()), sphereIndices.end());
-		jointBone->mNumWeights = sphereIndices.size();
-		std::vector<aiVertexWeight> *jointWeights = new std::vector < aiVertexWeight>;
-		for (j = 0; j < jointBone->mNumWeights; j++) {
+		jointBones[0]->mNumWeights = sphereIndices.size();
+		aiVertexWeight* jointWeights = new aiVertexWeight[jointBones[0]->mNumWeights];
+		for (j = 0; j < jointBones[0]->mNumWeights; j++) {
 			aiVertexWeight* w = new aiVertexWeight();
 			w->mVertexId = sphereIndices[j];
 			w->mWeight = 1.0f;
-			(*jointWeights).push_back(*w);
+			jointWeights[j] = *w;
 		}
-		jointBone->mWeights = &(*jointWeights)[0];
-		meshes[2 * i]->mBones = &jointBone;
+		jointBones[0]->mWeights = jointWeights;
+		meshes[2 * i]->mBones = jointBones;
+		meshes[2 * i]->mNumBones = 1;
 
 		if (!configEndEffector) { // si llegamos al endEffector, no hace falta agregar un link luego.
 			// create link node
@@ -73,8 +75,9 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			aiMesh* cubeMesh = Mona::Mesh::cubeMeshData();
 			meshes[2 * i + 1] = cubeMesh;
 			// add bone
-			aiBone* linkBone = new aiBone();
-			linkBone->mName = linkName;
+			aiBone** linkBones = new aiBone* [1];
+			linkBones[0] = new aiBone();
+			linkBones[0]->mName = linkName;
 			std::vector<unsigned int> cubeIndices = {};
 			for (j = 0; j < cubeMesh->mNumFaces; j++) {
 				aiFace f = cubeMesh->mFaces[j];
@@ -85,17 +88,17 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			// remove duplicated indices
 			std::sort(cubeIndices.begin(), cubeIndices.end());
 			cubeIndices.erase(std::unique(cubeIndices.begin(), cubeIndices.end()), cubeIndices.end());
-			linkBone->mNumWeights = cubeIndices.size();
-			std::vector<aiVertexWeight>* linkWeights = new std::vector<aiVertexWeight>;
-			for (j = 0; j < linkBone->mNumWeights; j++) {
+			linkBones[0]->mNumWeights = cubeIndices.size();
+			aiVertexWeight* linkWeights = new aiVertexWeight[linkBones[0]->mNumWeights];
+			for (j = 0; j < linkBones[0]->mNumWeights; j++) {
 				aiVertexWeight* w = new aiVertexWeight();
 				w->mVertexId = cubeIndices[j];
 				w->mWeight = 1.0f;
-				(*linkWeights).push_back(*w);
+				linkWeights[j] = *w;
 			}
-			linkBone->mWeights = &(*linkWeights)[0];
-			linkBone->mOffsetMatrix;
-			meshes[2 * i + 1]->mBones = &linkBone;
+			linkBones[0]->mWeights = linkWeights;
+			meshes[2 * i + 1]->mBones = linkBones;
+			meshes[2 * i + 1]->mNumBones = 1;
 		}
 	}
 	// agregamos valores de mallas a escena
@@ -128,6 +131,8 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 jointTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalJointTransform = jointTransform;
 	nodes[0]->mTransformation = finalJointTransform;
+	// set inverseBindMat
+	meshes[0]->mBones[0]->mOffsetMatrix = finalJointTransform.Inverse();
 	// link
 	scaling = aiVector3D(flThin, flLen, flThin); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -135,6 +140,8 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
+	// set inverseBindMat
+	meshes[1]->mBones[0]->mOffsetMatrix = (finalLinkTransform*finalJointTransform).Inverse();
 
 	// acc transform
 	aiMatrix4x4 accTransform = finalLinkTransform * finalJointTransform;
@@ -190,25 +197,32 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	animation->mTicksPerSecond = 10.0f;
 	animation->mDuration = animDuration* animation->mTicksPerSecond;
 	animation->mNumChannels = numOfNodes;
-	std::vector<aiNodeAnim*>* channels = new std::vector<aiNodeAnim*>;
+	aiNodeAnim** channels = new aiNodeAnim*[animation->mNumChannels];
 
 	// pasamos por cada nodo
 	for (i = 0; i < animation->mNumChannels; i++) {
 		std::string nodeName = (nodes[i]->mName).C_Str();
 		aiNodeAnim* anim = new aiNodeAnim();
-		std::vector<aiVectorKey> pos = {aiVectorKey(0.0f, aiVector3D(0.0f,0.0f,0.0f)), aiVectorKey(animation->mDuration, aiVector3D(0.0f, 0.0f, 0.0f))};
-		std::vector<aiQuatKey> rot = {aiQuatKey(0.0f, aiQuaternion(0.0f, 0.0f, 0.0f)), aiQuatKey(animation->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f))};
-		std::vector<aiVectorKey> scl = {aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f)), aiVectorKey(animation->mDuration, aiVector3D(1.0f, 1.0f, 1.0f))};
+		aiVectorKey* pos = new aiVectorKey[2];
+		pos[0] = aiVectorKey(0.0f, aiVector3D(0.0f, 0.0f, 0.0f));
+		pos[1] = aiVectorKey(animation->mDuration, aiVector3D(0.0f, 0.0f, 0.0f));
+		aiQuatKey* rot = new aiQuatKey[2];
+		rot[0] = aiQuatKey(0.0f, aiQuaternion(0.0f, 0.0f, 0.0f));
+		rot[1] = aiQuatKey(animation->mDuration, aiQuaternion(0.0f, 0.0f, 0.0f));
+
+		aiVectorKey* scl = new aiVectorKey[2];
+		scl[0] = aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f));
+		scl[1] = aiVectorKey(animation->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
 		anim->mNodeName = nodeName;
 		anim->mNumPositionKeys = 2;
 		anim->mNumRotationKeys = 2;
 		anim->mNumScalingKeys = 2;
-		anim->mPositionKeys = &pos[0];
-		anim->mRotationKeys = &rot[0];
-		anim->mScalingKeys = &scl[0];
-		(*channels).push_back(anim);
+		anim->mPositionKeys = pos;
+		anim->mRotationKeys = rot;
+		anim->mScalingKeys = scl;
+		channels[i] = anim;
 	}
-	animation->mChannels = &(*channels)[0];
+	animation->mChannels = channels;
 	
 	return scene;
 }

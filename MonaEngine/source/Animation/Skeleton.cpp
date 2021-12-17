@@ -6,6 +6,7 @@
 #include "../Core/AssimpTransformations.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <iostream>
 namespace Mona {
 
 	Skeleton::Skeleton(const std::string& filePath, const aiScene* paramScene) {
@@ -23,6 +24,7 @@ namespace Mona {
 		if (paramScene != nullptr) {
 			choice = 1;
 		}
+		std::cout << "sk1" << std::endl;
 		const aiScene* scene = sceneChoice[choice];
 		//Se llena un mapa con la informacion de todos los huesos
 		std::unordered_map<std::string, aiMatrix4x4> boneInfo;
