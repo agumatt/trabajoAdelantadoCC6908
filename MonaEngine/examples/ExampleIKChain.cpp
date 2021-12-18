@@ -131,7 +131,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
 	float bScale = 0.5f; // base scale
-	float lLen = 2.0f; // link relative length to joint
+	float lLen = 4.0f; // link relative length to joint
 	float lThin = 0.5f; // make link thinner relative to joint
 	float scaleDown = 0.6f; // reduce size of joints and links further in the chain
 	// joint
@@ -164,7 +164,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	for (i = 1; i <= numOfSegments; i++) {
 		if (i == numOfSegments) {
 			configEndEffector = true;
-			scaleDown = 0.2f;
+			scaleDown = 0.5f;
 		}
 		// joint
 		moveUpwards = linkCurrentBase - linkCurrentBase * scaleDown + linkCurrentLength;
@@ -177,7 +177,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 		// set inverseBindMat
 		meshes[2 * i]->mBones[0]->mOffsetMatrix = mat_identity();
 		// update saved local joint transform
-		lastJointTransform = jointTransform;
+		lastJointTransform = finalJointTransform;
 		
 		if (!configEndEffector) {
 			// link
@@ -185,16 +185,17 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 			rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
 			translation = aiVector3D(0.0f, 0.0f, moveUpwards);
 			linkTransform = aiMatrix4x4(scaling, rotation, translation);
-			finalLinkTransform = linkTransform;
-			nodes[2 * i + 1]->mTransformation = finalLinkTransform*lastJointTransform.Inverse();
+			finalLinkTransform = linkTransform * lastJointTransform.Inverse();
+			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
 			// set inverseBindMat
 			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = mat_identity();
 			// update saved local link transform
-			lastLinkTransform = linkTransform;
+			lastLinkTransform = finalLinkTransform;
 
 			// update link length
+			linkCurrentBase = linkCurrentBase + linkCurrentLength;
 			linkCurrentLength = linkCurrentLength * scaleDown;
-			linkCurrentBase = linkCurrentBase + moveUpwards;
+			
 
 		}
 
@@ -262,7 +263,7 @@ public:
 		UpdateAnimationState();
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
-		int numOfSegments = 2;
+		int numOfSegments = 10;
 		float animDuration = 1.5f;
 		m_chainScene = animatedChainScene(numOfSegments, animDuration);
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
