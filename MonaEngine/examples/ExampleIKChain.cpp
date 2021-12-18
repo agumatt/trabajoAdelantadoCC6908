@@ -7,7 +7,7 @@
 #include <imgui.h>
 #include <iostream>
 
-aiScene* animatedChainScene(int numOfSegments, float animDuration) {
+aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDuration) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
 	int numOfMeshes = numOfSegments * 2 + 1;
@@ -125,7 +125,7 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
 	float bScale = 0.2f; // base scale
-	float flLen = 4.0f; // first link relative length to joint
+	float flLen = segmentLength; // first link relative length to joint
 	float flThin = 0.5f; // make first link thinner relative to joint
 	float scaleDown = 1.0f; // reduce size of joints and links further in the chain
 	// joint
@@ -258,8 +258,9 @@ public:
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
 		int numOfSegments = 5;
+		float segmentLength = 4.0f;
 		float animDuration = 1.5f;
-		m_chainScene = animatedChainScene(numOfSegments, animDuration);
+		m_chainScene = animatedChainScene(numOfSegments, animDuration, segmentLength);
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
 
 		auto& meshManager = Mona::MeshManager::GetInstance();

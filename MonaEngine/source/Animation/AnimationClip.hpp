@@ -29,6 +29,7 @@ namespace Mona {
 		std::shared_ptr<Skeleton> GetSkeleton() const {
 			return m_skeletonPtr;
 		}
+		std::vector<AnimationTrack> m_animationTracks;
 	private:
 		void SetSkeleton(std::shared_ptr<Skeleton> skeletonPtr);
 		AnimationClip(const std::string& filePath, std::shared_ptr<Skeleton> skeleton, const aiScene* paramScene,
@@ -39,8 +40,6 @@ namespace Mona {
 
 		float GetSamplingTime(float time, bool isLooping) const;
 		std::pair<uint32_t, float> GetTimeFraction(const std::vector<float>& timeStamps, float time) const;
-
-		std::vector<AnimationTrack> m_animationTracks;
 		std::vector<std::string> m_trackJointNames;
 		std::vector<jointIndex> m_trackJointIndices;
 		std::shared_ptr<Skeleton> m_skeletonPtr;
