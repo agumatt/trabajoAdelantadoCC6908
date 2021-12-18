@@ -1,38 +1,44 @@
+#pragma once
+#ifndef SIMPLEIKCHAIN_HPP
+#define SIMPLEIKCHAIN_HPP
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <vector>
+#include <assimp/scene.h>
 
 namespace Mona {
-
-
-	class SimpleIKChain {
-
-
-		SimpleIKChain(int numNodes, float lenLinks);
-		std::vector<SimpleIKChainNode*> m_IKNodes;
-
-
-
-
-	};
 
 
 	class SimpleIKChainNode {
 
 	private:
 		SimpleIKChainNode* m_parent;
-		glm::fquat m_localRotation;
-		glm::vec3 m_localTranslation;
+		SimpleIKChainNode* m_child;
+		aiMatrix4x4 m_localTransform;
 	public:
-		glm::fquat getGlobalRotation();
-		glm::vec3 getGlobalTranslation();
-		glm::fquat getLocalRotation();
-		glm::vec3 getLocalTranslation();
-		void setLocalRotation();
-		void setLocalTranslation();
+		static aiMatrix4x4 identityMatrix();
+		SimpleIKChainNode();
+		aiMatrix4x4 getGlobalTransform();
+		aiMatrix4x4 getLocalTransform();
+		void setLocalTransform(aiMatrix4x4 t);
 		SimpleIKChainNode* getParent();
-		void setParent(SimpleIKChainNode& parentNode);
+		void setParent(SimpleIKChainNode* parentNode);
+		SimpleIKChainNode* getChild();
+		void setChild(SimpleIKChainNode* childNode);
 		
 
+	};
+
+	class SimpleIKChain {
+
+	public:
+		SimpleIKChain(int numNodes, float linkLength);
+		int getNumNodes();
+		SimpleIKChainNode* getChainNode(int index);
+	private:
+		int m_numNodes;
+		float m_linkLength;
+		std::vector<SimpleIKChainNode*> m_IKNodes;
 	};
 
 
@@ -41,3 +47,5 @@ namespace Mona {
 
 
 }
+
+#endif
