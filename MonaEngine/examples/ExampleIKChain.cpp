@@ -130,11 +130,11 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
-	float bScale = 0.2f; // base scale
+	float bScale = 0.5f; // base scale
 	float flLen = 2.0f; // first link relative length
 	float flThin = 0.5f; // make first link thinner
 	float scaleDown = 0.8f; // reduce size of joints and links further in the chain
-	float linkCurrentLength = bScale * flLen;
+	float linkCurrentLength = bScale * flLen * 2;
 	float linkCurrentBase = 0.0f;
 	// joint
 	aiVector3D scaling = aiVector3D(bScale, bScale, bScale); // escalamiento base
@@ -144,16 +144,16 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 finalJointTransform = jointTransform;
 	nodes[0]->mTransformation = finalJointTransform;
 	// set inverseBindMat
-	meshes[0]->mBones[0]->mOffsetMatrix = finalJointTransform.Inverse();
+	meshes[0]->mBones[0]->mOffsetMatrix = mat_identity(); 
 	// link
-	scaling = aiVector3D(1.0f, 1.0f, 1.0f); // escalamiento base
+	scaling = aiVector3D(flThin, flThin, flLen); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-	translation = aiVector3D(0.0f, 0.0f, 8.0f); // dejamos la base del primer link en (0,0,0)
+	translation = aiVector3D(0.0f, 0.0f, bScale*flLen); // dejamos la base del primer link en (0,0,0)
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
 	// set inverseBindMat
-	meshes[1]->mBones[0]->mOffsetMatrix = mat_identity();//(finalLinkTransform*finalJointTransform).Inverse();
+	meshes[1]->mBones[0]->mOffsetMatrix = finalJointTransform.Inverse();
 
 	// acc transform
 	aiMatrix4x4 accTransform = finalLinkTransform * finalJointTransform;
@@ -163,47 +163,48 @@ aiScene* animatedChainScene(int numOfSegments, float animDuration) {
 	aiMatrix4x4 accLinkTransform = linkTransform;
 	// joint 
 	configEndEffector = false;
-	//for (i = 1; i <= numOfSegments; i++) {
-	//	if (i == numOfSegments) {
-	//		configEndEffector = true;
-	//		scaleDown = 0.01f;
-	//	}
-	//	// joint
-	//	float moveUpwards = linkCurrentBase * scaleDown + linkCurrentLength * (1 - scaleDown) + linkCurrentLength;
-	//	scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
-	//	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-	//	translation = aiVector3D(0.0f, 0.0f, moveUpwards);
-	//	jointTransform = aiMatrix4x4(scaling, rotation, translation);
-	//	finalJointTransform = jointTransform * accJointTransform * accTransform.Inverse();
-	//	nodes[2 * i]->mTransformation = finalJointTransform;
-	//	// update acc transform
-	//	accTransform = finalJointTransform * accTransform;
-	//	// set inverseBindMat
-	//	meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
-	//	// update acc joint transform
-	//	accJointTransform = jointTransform * accJointTransform;
-	//	
-	//	if (!configEndEffector) {
-	//		// link
-	//		scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
-	//		rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
-	//		translation = aiVector3D(0.0f, 0.0f, moveUpwards);
-	//		linkTransform = aiMatrix4x4(scaling, rotation, translation);
-	//		finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
-	//		nodes[2 * i + 1]->mTransformation = finalLinkTransform;
-	//		// update acc transform
-	//		accTransform = finalLinkTransform * accTransform;
-	//		// set inverseBindMat
-	//		meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
-	//		// update acc link transform
-	//		accLinkTransform = linkTransform * accLinkTransform;
+	for (i = 1; i <= numOfSegments; i++) {
+		if (i == numOfSegments) {
+			std::cout << "end effff" << std::endl;
+			configEndEffector = true;
+			scaleDown = 0.5f;
+		}
+		// joint
+		float moveUpwards = linkCurrentBase - linkCurrentBase*scaleDown + linkCurrentLength;
+		scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
+		rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
+		translation = aiVector3D(0.0f, 0.0f, moveUpwards*5);
+		jointTransform = aiMatrix4x4(scaling, rotation, translation);
+		finalJointTransform = jointTransform * linkTransform.Inverse();
+		nodes[2 * i]->mTransformation = finalJointTransform;
+		// set inverseBindMat
+		meshes[2 * i]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+		// update acc transform
+		accTransform = finalJointTransform * accTransform;
+		// update acc joint transform
+		accJointTransform = jointTransform * accJointTransform;
+		
+		if (!configEndEffector) {
+			// link
+			scaling = aiVector3D(scaleDown, scaleDown, scaleDown);
+			rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
+			translation = aiVector3D(0.0f, 0.0f, moveUpwards);
+			linkTransform = aiMatrix4x4(scaling, rotation, translation);
+			finalLinkTransform = linkTransform * accLinkTransform * accTransform.Inverse();
+			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
+			// set inverseBindMat
+			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = accTransform.Inverse();
+			// update acc transform
+			accTransform = finalLinkTransform * accTransform;
+			// update acc link transform
+			accLinkTransform = linkTransform * accLinkTransform;
 
-	//		// update link length
-	//		linkCurrentLength = linkCurrentLength * scaleDown;
-	//		linkCurrentBase = linkCurrentBase + moveUpwards;
-	//	}
+			// update link length
+			linkCurrentLength = linkCurrentLength * scaleDown;
+			linkCurrentBase = linkCurrentBase + moveUpwards;
+		}
 
-	//}
+	}
 	// animacion base
 	aiAnimation** animations = new aiAnimation* [1];
 	animations[0] = new aiAnimation();
