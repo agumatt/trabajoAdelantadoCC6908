@@ -7,7 +7,7 @@
 #include <imgui.h>
 #include <iostream>
 
-aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDuration) {
+aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDuration, std::vector<aiMatrix4x4>* worldTransforms) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
 	int numOfMeshes = numOfSegments * 2 + 1;
@@ -128,6 +128,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	float flLen = segmentLength; // first link relative length to joint
 	float flThin = 0.5f; // make first link thinner relative to joint
 	float scaleDown = 1.0f; // reduce size of joints and links further in the chain
+	aiMatrix4x4 accTransform = Mona::SimpleIKChainNode::identityMatrix();
 	// joint
 	aiVector3D scaling = aiVector3D(bScale, bScale, bScale); // escalamiento base
 	aiQuaternion rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -135,6 +136,9 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	aiMatrix4x4 jointTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalJointTransform = jointTransform;
 	nodes[0]->mTransformation = finalJointTransform;
+	// acc transform
+	accTransform = accTransform* finalJointTransform;
+	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
 	meshes[0]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix(); 
 	// link
@@ -144,9 +148,11 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	aiMatrix4x4 linkTransform = aiMatrix4x4(scaling, rotation, translation);
 	aiMatrix4x4 finalLinkTransform = linkTransform;
 	nodes[1]->mTransformation = finalLinkTransform;
+	// acc transform
+	accTransform = accTransform * finalLinkTransform;
+	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
 	meshes[1]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
-
 	// last local link transform
 	aiMatrix4x4 lastLinkTransform = linkTransform;
 	aiMatrix4x4 lastJointTransform = jointTransform;
@@ -168,6 +174,9 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		jointTransform = aiMatrix4x4(scaling, rotation, translation);
 		finalJointTransform = jointTransform * lastLinkTransform.Inverse();
 		nodes[2 * i]->mTransformation = finalJointTransform;
+		// acc transform
+		accTransform = accTransform*finalJointTransform;
+		worldTransforms->push_back(accTransform);
 		// set inverseBindMat
 		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
 		// update saved local joint transform
@@ -181,6 +190,9 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 			linkTransform = aiMatrix4x4(scaling, rotation, translation);
 			finalLinkTransform = linkTransform * lastJointTransform.Inverse();
 			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
+			// acc transform
+			accTransform = accTransform*finalLinkTransform;
+			worldTransforms->push_back(accTransform);
 			// set inverseBindMat
 			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
 			// update saved local link transform
@@ -188,8 +200,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 
 			// update link length
 			linkCurrentBase = linkCurrentBase + linkCurrentLength;
-			linkCurrentLength = linkCurrentLength * scaleDown;
-			
+			linkCurrentLength = linkCurrentLength * scaleDown;	
 
 		}
 
@@ -215,6 +226,27 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		aiVectorKey* scl = new aiVectorKey[2];
 		scl[0] = aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f));
 		scl[1] = aiVectorKey(animations[0]->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
+		if (i == 6) {
+			aiMatrix4x4 worldTrans = worldTransforms->at(i);
+			aiVector3D aiPos = aiVector3D(0.0f, 0.0f, 0.0f);
+			aiQuaternion aiRot = aiQuaternion(0.0f, 0.0f, 0.0f);
+			aiVector3D aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
+			worldTrans.Decompose(aiScale, aiRot, aiPos);
+			aiVector3D displaceToOriginV = -aiPos;
+			aiVector3D displaceBackV = aiPos;
+			aiMatrix4x4 displaceToOriginM = aiMatrix4x4(aiScale, aiRot, displaceToOriginV);
+			aiRot = aiQuaternion(1.0f, 0.0f, 0.0f);
+			aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
+			aiMatrix4x4 rotateAndDisplaceBackM = aiMatrix4x4(aiScale, aiRot, displaceBackV);
+			aiMatrix4x4 finalMatrix = rotateAndDisplaceBackM * displaceToOriginM;
+			finalMatrix.Decompose(aiScale, aiRot, aiPos);
+			pos[1] = aiVectorKey(animations[0]->mDuration, aiPos);
+			rot[1] = aiQuatKey(animations[0]->mDuration, aiRot);
+			//scl[1] = aiVectorKey(animations[0]->mDuration, aiScale);
+		}
+		if (i == 0) {
+			rot[1] = aiQuatKey(animations[0]->mDuration, aiQuaternion(1.0f, 0.0f, 0.0f));
+		}
 		anim->mNodeName = nodeName;
 		anim->mNumPositionKeys = 2;
 		anim->mNumRotationKeys = 2;
@@ -239,6 +271,8 @@ private:
 	Mona::SkeletalMeshHandle m_skeletalMesh;
 	Mona::TransformHandle m_transform;
 	std::shared_ptr<Mona::AnimationClip> m_chainBaseAnimation;
+public:
+	std::vector<aiMatrix4x4> m_worldTransforms = {};
 
 private:
 	void SetTargetPosition(const glm::vec3 position) {}
@@ -258,9 +292,9 @@ public:
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
 		int numOfSegments = 5;
-		float segmentLength = 4.0f;
-		float animDuration = 1.5f;
-		m_chainScene = animatedChainScene(numOfSegments, animDuration, segmentLength);
+		float segmentLength = 5.0f;
+		float animDuration = 1.0f;
+		m_chainScene = animatedChainScene(numOfSegments, segmentLength, animDuration, &m_worldTransforms);
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
 
 		auto& meshManager = Mona::MeshManager::GetInstance();
@@ -309,8 +343,8 @@ public:
 		world.SetAmbientLight(glm::vec3(0.8f));
 		CreatePlane(world);
 		world.CreateGameObject<AnimatedChain>();
-		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 10.0f, glm::radians(-45.0f));
-		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 10.0f, glm::radians(-135.0f));
+		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-45.0f));
+		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-135.0f));
 
 		// input/camera set up
 		auto& eventManager = world.GetEventManager();
