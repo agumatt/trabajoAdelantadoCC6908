@@ -6,5 +6,3 @@ function(Add_Test TARGETNAME FILENAME)
 	target_include_directories(${TARGETNAME} PRIVATE ${MONA_INCLUDE_DIRECTORY} ${THIRD_PARTY_INCLUDE_DIRECTORIES})
 
 endfunction(Add_Test)
-
-Add_Test(Test002_World Test002_World.cpp)

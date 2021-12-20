@@ -1,4 +1,5 @@
 #include "FABRIKSolver.hpp"
+#include <iostream>
 
 namespace Mona {
 
@@ -8,29 +9,25 @@ namespace Mona {
 
 	void FABRIKSolver::IterateBackward(aiVector3D target) {
 		int nodeIndex = m_bindPoseChain.getNumNodes()-1;
+		SimpleIKChainNode* currNode;
 		aiVector3D newTarget = target;
-		while (nodeIndex > 0) {
+		auto testCurrNode = m_solvedChain.getChainNode(nodeIndex);
+		while (nodeIndex >= 0) {
 			// current node
-			auto currNode = m_solvedChain.getChainNode(nodeIndex);
-			auto currNodeTransform = currNode->getLocalTransform();
-			aiVector3D currNodeTrans = IKUtils::getMatrixTranslation(currNodeTransform);
-			aiVector3D diff = newTarget - currNodeTrans;
-			auto newCurrNodeTransform = IKUtils::createTranslationMatrix(diff) * currNodeTransform;
+			currNode = m_solvedChain.getChainNode(nodeIndex);
+			aiVector3D currLocalTarget = currNode->posWorldToLocal(newTarget);
+			aiMatrix4x4 moveCurrNodeToTarget = IKUtils::createTranslationMatrix(currLocalTarget);
+			aiMatrix4x4 newCurrNodeTransform = moveCurrNodeToTarget * currNode->getLocalTransform();
 			currNode->setLocalTransform(newCurrNodeTransform);
-			// parent node
-			auto parNode = m_solvedChain.getChainNode(nodeIndex-1);
-			auto parNodeTransform = parNode->getLocalTransform();
-			aiVector3D parNodeTrans = IKUtils::getMatrixTranslation(parNodeTransform);
-			// calculamos direccion del nodo actualizado al nodo padre
-			aiVector3D currToParDirection = parNodeTrans - newTarget;
-			currToParDirection = currToParDirection.Normalize();
-			aiVector3D currToParTrans = currToParDirection * m_bindPoseChain.getLinkLength();
-			aiVector3D currNodeNewTrans = IKUtils::getMatrixTranslation(newCurrNodeTransform);
-			// posicionamos el nodo padre a distancia largo de segmento del nodo, en la direccion recien calculada
-			auto newParTransform = IKUtils::createTranslationMatrix(currToParTrans) * IKUtils::createTranslationMatrix(currNodeNewTrans);
-			parNode->setLocalTransform(newParTransform);
-			// actualizamos el target, ahora corresponde a la posicion del curr node
-			newTarget = currNodeNewTrans;
+			// set next target
+			if (nodeIndex > 0) {
+				// parent node
+				SimpleIKChainNode* parNode = m_solvedChain.getChainNode(nodeIndex - 1);
+				// calculamos direccion del nodo actualizado al nodo padre
+				aiVector3D currToParDirection = (parNode->getGlobalTranslation() - currNode->getGlobalTranslation()).Normalize();
+				aiVector3D currToParVec = currToParDirection * m_bindPoseChain.getLinkLength();
+				newTarget = currNode->getGlobalTranslation() + currToParVec;
+			}
 			nodeIndex -= 1;
 		}
 
@@ -38,42 +35,37 @@ namespace Mona {
 
 	void FABRIKSolver::IterateForward(aiVector3D base) {
 		int nodeIndex;
+		SimpleIKChainNode* currNode;
 		aiVector3D newTarget = base;
-		for (nodeIndex = 0; nodeIndex< m_bindPoseChain.getNumNodes()-1; nodeIndex++) {
+		for (nodeIndex = 0; nodeIndex<= m_bindPoseChain.getNumNodes()-1; nodeIndex++) {
 			// current node
-			auto currNode = m_solvedChain.getChainNode(nodeIndex);
-			auto currNodeTransform = currNode->getLocalTransform();
-			aiVector3D currNodeTrans = IKUtils::getMatrixTranslation(currNodeTransform);
-			aiVector3D diff = newTarget - currNodeTrans;
-			auto newCurrNodeTransform = IKUtils::createTranslationMatrix(diff) * currNodeTransform;
+			currNode = m_solvedChain.getChainNode(nodeIndex);
+			aiVector3D currLocalTarget = currNode->posWorldToLocal(newTarget);
+			aiMatrix4x4 moveCurrNodeToTarget = IKUtils::createTranslationMatrix(currLocalTarget);
+			aiMatrix4x4 newCurrNodeTransform = moveCurrNodeToTarget * currNode->getLocalTransform();
 			currNode->setLocalTransform(newCurrNodeTransform);
-			// child node
-			auto chNode = m_solvedChain.getChainNode(nodeIndex + 1);
-			auto chNodeTransform = chNode->getLocalTransform();
-			aiVector3D chNodeTrans = IKUtils::getMatrixTranslation(chNodeTransform);
-			// calculamos direccion del nodo actualizado al nodo hijo
-			aiVector3D currToChDirection = chNodeTrans - newTarget;
-			currToChDirection = currToChDirection.Normalize();
-			aiVector3D currToChTrans = currToChDirection * m_bindPoseChain.getLinkLength();
-			aiVector3D currNodeNewTrans = IKUtils::getMatrixTranslation(newCurrNodeTransform);
-			// posicionamos el nodo padre a distancia largo de segmento del nodo, en la direccion recien calculada
-			auto newChTransform = IKUtils::createTranslationMatrix(currToChTrans) * IKUtils::createTranslationMatrix(currNodeNewTrans);
-			chNode->setLocalTransform(newChTransform);
-			// actualizamos el target, ahora corresponde a la posicion del curr node
-			newTarget = currNodeNewTrans;
-			nodeIndex -= 1;
+			// set next target
+			if (nodeIndex < m_bindPoseChain.getNumNodes()-1) {
+				// child node
+				SimpleIKChainNode* chNode = m_solvedChain.getChainNode(nodeIndex + 1);
+				// calculamos direccion del nodo actualizado al nodo hijo
+				aiVector3D currToChDirection = (chNode->getGlobalTranslation() - currNode->getGlobalTranslation()).Normalize();
+				aiVector3D currToChVec = currToChDirection * m_bindPoseChain.getLinkLength();
+				newTarget = currNode->getGlobalTranslation() + currToChVec;
+			}
 		}
 
 	}
 
 
 	void FABRIKSolver::solve(aiVector3D target) {
-		m_solvedChain = m_bindPoseChain;
+		m_solvedChain.set(m_bindPoseChain);
 		int chainLength = m_bindPoseChain.getNumNodes();
-		aiMatrix4x4 baseTransform = m_bindPoseChain.getChainNode(0)->getLocalTransform();
-		aiVector3D baseTranslation = IKUtils::getMatrixTranslation(baseTransform);
+		aiVector3D baseTranslation = m_bindPoseChain.getChainNode(0)->getGlobalTranslation();
 		for (int i = 0; i < m_numOfSteps; i++) {
+
 			IterateBackward(target);
+			std::string j = "j";
 			IterateForward(baseTranslation);
 			aiVector3D currEndEfectorTranslation = m_solvedChain.getChainNode(chainLength - 1)->getGlobalTranslation();
 			float currError = (target - currEndEfectorTranslation).Length();

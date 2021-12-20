@@ -9,7 +9,7 @@
 #include <imgui.h>
 #include <iostream>
 
-aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDuration, std::vector<aiMatrix4x4>* worldTransforms) {
+aiScene* animatedChainScene(int numOfSegments, float segmentLength, float chainScale, float animDuration) {
 	// creamos la escena que contiene la cadena
 	aiScene* scene = new aiScene();
 	int numOfMeshes = numOfSegments * 2 + 1;
@@ -126,7 +126,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
-	float bScale = 1.0f; // base scale
+	float bScale = chainScale; // base scale
 	float flLen = segmentLength; // first link relative length to joint
 	float flThin = 0.5f; // make first link thinner relative to joint
 	float scaleDown = 1.0f; // reduce size of joints and links further in the chain
@@ -140,7 +140,6 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	nodes[0]->mTransformation = finalJointTransform;
 	// acc transform
 	accTransform = accTransform* finalJointTransform;
-	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
 	meshes[0]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 	// link
@@ -152,7 +151,6 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	nodes[1]->mTransformation = finalLinkTransform;
 	// acc transform
 	accTransform = accTransform * finalLinkTransform;
-	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
 	meshes[1]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 	// last local link transform
@@ -178,7 +176,6 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		nodes[2 * i]->mTransformation = finalJointTransform;
 		// acc transform
 		accTransform = accTransform*finalJointTransform;
-		worldTransforms->push_back(accTransform);
 		// set inverseBindMat
 		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 		// update saved local joint transform
@@ -194,7 +191,6 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 			nodes[2 * i + 1]->mTransformation = finalLinkTransform;
 			// acc transform
 			accTransform = accTransform*finalLinkTransform;
-			worldTransforms->push_back(accTransform);
 			// set inverseBindMat
 			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 			// update saved local link transform
@@ -228,27 +224,6 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		aiVectorKey* scl = new aiVectorKey[2];
 		scl[0] = aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f));
 		scl[1] = aiVectorKey(animations[0]->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
-		if (i == -6) {
-			aiMatrix4x4 worldTrans = worldTransforms->at(i);
-			aiVector3D aiPos = aiVector3D(0.0f, 0.0f, 0.0f);
-			aiQuaternion aiRot = aiQuaternion(0.0f, 0.0f, 0.0f);
-			aiVector3D aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
-			worldTrans.Decompose(aiScale, aiRot, aiPos);
-			aiVector3D displaceToOriginV = -aiPos;
-			aiVector3D displaceBackV = aiPos;
-			aiMatrix4x4 displaceToOriginM = aiMatrix4x4(aiScale, aiRot, displaceToOriginV);
-			aiRot = aiQuaternion(1.0f, 0.0f, 0.0f);
-			aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
-			aiMatrix4x4 rotateAndDisplaceBackM = aiMatrix4x4(aiScale, aiRot, displaceBackV);
-			aiMatrix4x4 finalMatrix = rotateAndDisplaceBackM * displaceToOriginM;
-			finalMatrix.Decompose(aiScale, aiRot, aiPos);
-			pos[1] = aiVectorKey(animations[0]->mDuration, aiPos);
-			rot[1] = aiQuatKey(animations[0]->mDuration, aiRot);
-			//scl[1] = aiVectorKey(animations[0]->mDuration, aiScale);
-		}
-		if (i == 0) {
-			rot[1] = aiQuatKey(animations[0]->mDuration, aiQuaternion(1.0f, 0.0f, 0.0f));
-		}
 		anim->mNodeName = nodeName;
 		anim->mNumPositionKeys = 2;
 		anim->mNumRotationKeys = 2;
@@ -291,9 +266,9 @@ public:
 	std::shared_ptr<Mona::AnimationClip> m_chainBaseAnimation;
     Mona::FABRIKSolver m_FABRIKSolver;
 	bool m_prevIsPress = false;
-	bool m_targetUpdated;
+	bool m_targetUpdated = false;
 	aiVector3D m_target;
-	int m_solverIndex; // 0-FABRIK, 1-CCD
+	int m_solverIndex = 0; // 0-FABRIK, 1-CCD
 	Mona::SimpleIKChain m_solution;
 	//Mona::CCDSolver m_CCDSolver;
 
@@ -303,18 +278,9 @@ private:
 		if (input.IsMouseButtonPressed(MONA_MOUSE_BUTTON_1) && !m_prevIsPress) {
 			auto mousePos = input.GetMousePosition();
 			MONA_LOG_INFO("Mouse Button press At: ({0},{1}).", mousePos.x, mousePos.y);
-			auto camera = world.GetMainCameraComponent();
-			auto cameraTransform = world.GetSiblingComponentHandle<Mona::TransformComponent>(camera);
-			glm::vec3 rayFrom = cameraTransform->GetLocalTranslation();
-			glm::vec3 rayTo = world.MainCameraScreenPositionToWorld(mousePos);
-			glm::vec3 direction = glm::normalize(rayTo - rayFrom);
-			auto raycastResult = world.ClosestHitRayTest(rayFrom, rayFrom + camera->GetZFarPlane() * direction);
-			if (raycastResult.HasHit())
-			{
-				glm::vec3 position = raycastResult.m_hitPosition;
-				m_target = aiVector3D(position.x, position.y, position.z);
-				m_targetUpdated = true;
-			}
+			glm::vec3 position = world.MainCameraScreenPositionToWorld(mousePos);
+			m_target = aiVector3D(position.x, position.y, position.z);
+			m_targetUpdated = true;
 			m_prevIsPress = true;
 		}
 		else if (m_prevIsPress && !input.IsMouseButtonPressed(MONA_MOUSE_BUTTON_1)) {
@@ -323,78 +289,79 @@ private:
 	}
 
 
-	void UpdateSteeringBehaviour() {}
-
-	void UpdateAnimationState() {}
-
-public:
-	virtual void UserUpdate(Mona::World& world, float timeStep) noexcept {
-		UpdateTargetPosition(world);
-		UpdateSteeringBehaviour();
-		UpdateAnimationState();
+	void UpdateIKData() {
 		//Calculos IK
 		if (m_targetUpdated) {
 			if (m_solverIndex == 0) {
+				std::cout << "Solving chain..." << std::endl;
 				m_FABRIKSolver.solve(m_target);
+				std::cout << "Chain solved!!" << std::endl;
 				m_solution = m_FABRIKSolver.getSolvedChain();
 			}
 			else if (m_solverIndex == 1) {
 
 			}
 			// se modifica la animacion base con los datos obtenidos
-			auto animationTracks = m_chainBaseAnimation->m_animationTracks;
-			for (int i = 0; i < animationTracks.size(); i++) {
+			std::cout << "Updating base animation..." << std::endl;
+			for (int i = 0; i < m_chainBaseAnimation->m_animationTracks.size(); i++) {
 				// un track por nodo
+				std::cout << "target: " << "x: " << m_target.x << ", y: " << m_target.y << ", z: " << m_target.z << std::endl;
 				// dejamos la pose final de la animacion como la inicial
-				auto animationTrack = animationTracks[i];
-				animationTrack.positions[0] = animationTrack.positions[1];
-				animationTrack.rotations[0] = animationTrack.rotations[1];
-				animationTrack.scales[0] = animationTrack.scales[1];
+				m_chainBaseAnimation->m_animationTracks[i].positions[0] = m_chainBaseAnimation->m_animationTracks[i].positions[1];
+				m_chainBaseAnimation->m_animationTracks[i].rotations[0] = m_chainBaseAnimation->m_animationTracks[i].rotations[1];
+				m_chainBaseAnimation->m_animationTracks[i].scales[0] = m_chainBaseAnimation->m_animationTracks[i].scales[1];
+				std::cout << "base pos: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].positions[0].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].positions[0].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].positions[0].z << std::endl;
+				std::cout << "base rot: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].rotations[0].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].rotations[0].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].rotations[0].z << std::endl;
+				std::cout << "base scl: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].scales[0].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].scales[0].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].scales[0].z << std::endl;
 
-				
 				Mona::SimpleIKChainNode* currentJoint = m_solution.getChainNode(0);
 				// arreglo temporal para corregir la animacion
 				aiMatrix4x4 jointWorldTransform = currentJoint->getGlobalTransform();
 				aiMatrix4x4 preFixTransform = currentJoint->getLocalTransform();
 				aiMatrix4x4 fixedTransform = fixRotation(preFixTransform, jointWorldTransform);
-
 				aiVector3D trans = Mona::IKUtils::getMatrixTranslation(fixedTransform);
 				aiVector3D scl = Mona::IKUtils::getMatrixScaling(fixedTransform);
 				aiQuaternion rot = Mona::IKUtils::getMatrixRotation(fixedTransform);
-				animationTrack.positions[1] = glm::vec3(trans.x, trans.y, trans.z);
-				animationTrack.rotations[1] = glm::fquat(1.0f, rot.x, rot.y, rot.z);
-				animationTrack.scales[1] = glm::vec3(scl.x, scl.y, scl.z);
+				m_chainBaseAnimation->m_animationTracks[i].positions[1] = glm::vec3(trans.x, trans.y, trans.z);
+				m_chainBaseAnimation->m_animationTracks[i].rotations[1] = glm::fquat(1.0f, rot.x, rot.y, rot.z);
+				m_chainBaseAnimation->m_animationTracks[i].scales[1] = glm::vec3(scl.x, scl.y, scl.z);
+				std::cout << "target pos: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].positions[1].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].positions[1].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].positions[1].z << std::endl;
+				std::cout << "target rot: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].rotations[1].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].rotations[1].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].rotations[1].z << std::endl;
+				std::cout << "target scl: " << "x: " << m_chainBaseAnimation->m_animationTracks[i].scales[1].x << ", y: " << m_chainBaseAnimation->m_animationTracks[i].scales[1].y << ", z: " << m_chainBaseAnimation->m_animationTracks[i].scales[1].z << std::endl;
 
 				// solo es necesario modificar las transformaciones de las joints
 				i++;
 
 			}
+			std::cout << "Base animation updated" << std::endl;
 			m_targetUpdated = false;
 			// una vez actualizamos la animacion falta comenzar la reproduccion
-			m_skeletalMesh->GetAnimationController().PlayAnimation(m_chainBaseAnimation);
-
-
-
+			//m_skeletalMesh->GetAnimationController().PlayAnimation(m_chainBaseAnimation);
 		}
-		
-	};
+	}
+
+public:
 	virtual void UserStartUp(Mona::World& world) noexcept {
-		int numOfSegments = 1;
+		int numOfSegments = 7;
+		float chainScale = 0.2f;
 		float segmentLength = 5.0f;
 		float animDuration = 3.0f;
-		m_chainScene = animatedChainScene(numOfSegments, segmentLength, animDuration, &m_worldTransforms);
+		m_chainScene = animatedChainScene(numOfSegments, segmentLength, chainScale, animDuration);
 		// create IK chains
 		Mona::SimpleIKChain bindPoseChain = Mona::SimpleIKChain(numOfSegments + 1, segmentLength);
 		aiNode* rootNode = m_chainScene->mRootNode;
 		aiNode* currNode = rootNode;
-		int chainJointIndex = numOfSegments;
-		while (chainJointIndex >= 0) {
+		int chainJointIndex = 0;
+		while (chainJointIndex <= numOfSegments) {
 			bindPoseChain.getChainNode(chainJointIndex)->setLocalTransform(currNode->mTransformation);
-			chainJointIndex -= 1;
-			currNode = currNode->mParent->mParent; //nos saltamos los links	
+			if (chainJointIndex < numOfSegments) {
+				currNode = currNode->mChildren[0]->mChildren[0]; //nos saltamos los links	
+			}
+			chainJointIndex += 1;
+			
 		}
 		m_solverIndex = 0;
-		m_FABRIKSolver = Mona::FABRIKSolver(bindPoseChain, 20, 0.001);
+		m_FABRIKSolver = Mona::FABRIKSolver(bindPoseChain, 5, 0.001);
 
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
 
@@ -409,7 +376,14 @@ public:
 		m_skeletalMesh = world.AddComponent<Mona::SkeletalMeshComponent>(*this, skinnedMesh, m_chainBaseAnimation, materialPtr);
 	}
 
+	virtual void UserUpdate(Mona::World& world, float timeStep) noexcept {
+		UpdateTargetPosition(world);
+		UpdateIKData();
+	}
+		
 };
+	
+
 
 void CreatePlane(Mona::World& world) {
 	auto plane = world.CreateGameObject<Mona::GameObject>();
@@ -444,9 +418,6 @@ public:
 		world.SetAmbientLight(glm::vec3(0.8f));
 		CreatePlane(world);
 		auto chainHandle = world.CreateGameObject<AnimatedChain>();
-		auto chainInnerHandle = chainHandle.GetInnerHandle();
-		AnimatedChain* chainObject = (AnimatedChain*) world.m_objectManager.GetGameObjectPointer(chainInnerHandle);
-		m_animatedChainObject = chainObject;
 
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-45.0f));
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-135.0f));

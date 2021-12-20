@@ -19,9 +19,6 @@ namespace Mona {
 		SimpleIKChain getSolvedChain() {
 			return m_solvedChain;
 		}
-		aiVector3D getCurrentTarget() {
-			return m_currentTarget;
-		}
 		int getNumberOfSteps() {
 			return m_numOfSteps;
 		}

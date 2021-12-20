@@ -24,8 +24,8 @@ namespace Mona {
 			node->setChild(m_IKNodes[i + 1]);
 		}
 		SimpleIKChainNode* endNode = m_IKNodes[numNodes-1];
-		rootNode->setParent(m_IKNodes[numNodes - 2]);
-		rootNode->setChild(nullptr);
+		endNode->setParent(m_IKNodes[numNodes - 2]);
+		endNode->setChild(nullptr);
 	}
 	int SimpleIKChain::getNumNodes() {
 		return m_numNodes;
@@ -33,6 +33,15 @@ namespace Mona {
 
 	float SimpleIKChain::getLinkLength() {
 		return m_linkLength;
+	}
+
+	void SimpleIKChain::set(SimpleIKChain& copyChain) {
+		if (m_linkLength!=copyChain.getLinkLength() || m_numNodes!=copyChain.getNumNodes()) {
+			MONA_LOG_ERROR("Chains are not compatible!");
+		}
+		for (int i = 0; i < m_numNodes; i++) {
+			m_IKNodes[i]->setLocalTransform(copyChain.getChainNode(i)->getLocalTransform());
+		}
 	}
 
 	SimpleIKChainNode* SimpleIKChain::getChainNode(int index) {
@@ -85,6 +94,16 @@ namespace Mona {
 		aiMatrix4x4 globalTransform = getGlobalTransform();
 		return IKUtils::getMatrixTranslation(globalTransform);
 
+	}
+
+	aiVector3D SimpleIKChainNode::posWorldToLocal(aiVector3D worldVec) {
+		aiVector3D localVec = this->getGlobalTransform().Inverse() * worldVec;
+		return localVec;
+	}
+
+	aiVector3D SimpleIKChainNode::posLocalToWorld(aiVector3D localVec) {
+		aiVector3D worldVec = this->getGlobalTransform() * localVec;
+		return worldVec;
 	}
 
 

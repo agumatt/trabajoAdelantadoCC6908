@@ -25,6 +25,8 @@ namespace Mona {
 		void setParent(SimpleIKChainNode* parentNode);
 		SimpleIKChainNode* getChild();
 		void setChild(SimpleIKChainNode* childNode);
+		aiVector3D posWorldToLocal(aiVector3D worldVec);
+		aiVector3D posLocalToWorld(aiVector3D localVec);
 		
 
 	};
@@ -37,6 +39,7 @@ namespace Mona {
 		int getNumNodes();
 		SimpleIKChainNode* getChainNode(int index);
 		float getLinkLength();
+		void set(SimpleIKChain& copyChain);
 	private:
 		int m_numNodes;
 		float m_linkLength;
