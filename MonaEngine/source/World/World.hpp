@@ -45,6 +45,7 @@ namespace Mona {
 	public:
 		friend class Engine;
 		friend class MonaTest;
+		GameObjectManager m_objectManager;
 		
 		World(const World& world) = delete;
 		World& operator=(const World& world) = delete;
@@ -128,8 +129,6 @@ namespace Mona {
 		Window m_window;
 		Application& m_application;
 		bool m_shouldClose;
-
-		GameObjectManager m_objectManager;
 		std::array<std::unique_ptr<BaseComponentManager>, GetComponentTypeCount()> m_componentManagers;
 
 		Renderer m_renderer;

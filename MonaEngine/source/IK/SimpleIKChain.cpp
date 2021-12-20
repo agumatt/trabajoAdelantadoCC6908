@@ -1,5 +1,6 @@
 #include "SimpleIKChain.hpp"
 #include "../Core/Log.hpp"
+#include "IKUtils.hpp"
 
 
 namespace Mona {
@@ -43,17 +44,10 @@ namespace Mona {
 
 
 
-	aiMatrix4x4 identityMatrix() {
-		aiVector3D trans = aiVector3D(0.0f, 0.0f, 0.0f);
-		aiQuaternion rot = aiQuaternion(0.0f, 0.0f, 0.0f);
-		aiVector3D scal = aiVector3D(1.0f, 1.0f, 1.0f);
-		return aiMatrix4x4(scal, rot, trans);
-	}
-
 	SimpleIKChainNode::SimpleIKChainNode() {
 		m_parent = nullptr;
 		m_child = nullptr;
-		m_localTransform = identityMatrix();
+		m_localTransform = IKUtils::identityMatrix();
 	}
 	aiMatrix4x4 SimpleIKChainNode::getGlobalTransform() {
 		SimpleIKChainNode* currNode = this;
@@ -87,16 +81,9 @@ namespace Mona {
 		m_parent = parentNode;
 	}
 
-	aiVector3D getMatrixTranslation(aiMatrix4x4 mat) {
-		aiVector3D pos;
-		aiQuaternion rot;
-		aiVector3D scl;
-		mat.Decompose(scl, rot, pos);
-		return pos;
-	}
 	aiVector3D SimpleIKChainNode::getGlobalTranslation() {
 		aiMatrix4x4 globalTransform = getGlobalTransform();
-		return getMatrixTranslation(globalTransform);
+		return IKUtils::getMatrixTranslation(globalTransform);
 
 	}
 

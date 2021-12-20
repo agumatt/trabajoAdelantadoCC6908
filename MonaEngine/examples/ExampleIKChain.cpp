@@ -130,7 +130,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	float flLen = segmentLength; // first link relative length to joint
 	float flThin = 0.5f; // make first link thinner relative to joint
 	float scaleDown = 1.0f; // reduce size of joints and links further in the chain
-	aiMatrix4x4 accTransform = Mona::IKSolver::identityMatrix();
+	aiMatrix4x4 accTransform = Mona::IKUtils::identityMatrix();
 	// joint
 	aiVector3D scaling = aiVector3D(bScale, bScale, bScale); // escalamiento base
 	aiQuaternion rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -142,7 +142,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	accTransform = accTransform* finalJointTransform;
 	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
-	meshes[0]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
+	meshes[0]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 	// link
 	scaling = aiVector3D(flThin, flThin, flLen); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -154,7 +154,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	accTransform = accTransform * finalLinkTransform;
 	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
-	meshes[1]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
+	meshes[1]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 	// last local link transform
 	aiMatrix4x4 lastLinkTransform = linkTransform;
 	aiMatrix4x4 lastJointTransform = jointTransform;
@@ -180,7 +180,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		accTransform = accTransform*finalJointTransform;
 		worldTransforms->push_back(accTransform);
 		// set inverseBindMat
-		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
+		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 		// update saved local joint transform
 		lastJointTransform = finalJointTransform;
 		
@@ -196,7 +196,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 			accTransform = accTransform*finalLinkTransform;
 			worldTransforms->push_back(accTransform);
 			// set inverseBindMat
-			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
+			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::IKUtils::identityMatrix();
 			// update saved local link transform
 			lastLinkTransform = finalLinkTransform;
 
@@ -283,20 +283,44 @@ aiMatrix4x4 fixRotation(aiMatrix4x4 inputTransform, aiMatrix4x4 jointWorldTransf
 
 class AnimatedChain :public Mona::GameObject {
 
-private:
+public:
+	std::vector<aiMatrix4x4> m_worldTransforms = {};
 	aiScene* m_chainScene;
 	Mona::SkeletalMeshHandle m_skeletalMesh;
 	Mona::TransformHandle m_transform;
 	std::shared_ptr<Mona::AnimationClip> m_chainBaseAnimation;
-	Mona::FABRIKSolver m_FABRIKSolver;
+    Mona::FABRIKSolver m_FABRIKSolver;
+	bool m_prevIsPress = false;
+	bool m_targetUpdated;
+	aiVector3D m_target;
+	int m_solverIndex; // 0-FABRIK, 1-CCD
+	Mona::SimpleIKChain m_solution;
 	//Mona::CCDSolver m_CCDSolver;
-public:
-	std::vector<aiMatrix4x4> m_worldTransforms = {};
 
 private:
-	void SetTargetPosition(const glm::vec3 position) {}
-
-	void UpdateTargetPosition(Mona::World& world) {	}
+	void UpdateTargetPosition(Mona::World& world) {	
+		auto& input = world.GetInput();
+		if (input.IsMouseButtonPressed(MONA_MOUSE_BUTTON_1) && !m_prevIsPress) {
+			auto mousePos = input.GetMousePosition();
+			MONA_LOG_INFO("Mouse Button press At: ({0},{1}).", mousePos.x, mousePos.y);
+			auto camera = world.GetMainCameraComponent();
+			auto cameraTransform = world.GetSiblingComponentHandle<Mona::TransformComponent>(camera);
+			glm::vec3 rayFrom = cameraTransform->GetLocalTranslation();
+			glm::vec3 rayTo = world.MainCameraScreenPositionToWorld(mousePos);
+			glm::vec3 direction = glm::normalize(rayTo - rayFrom);
+			auto raycastResult = world.ClosestHitRayTest(rayFrom, rayFrom + camera->GetZFarPlane() * direction);
+			if (raycastResult.HasHit())
+			{
+				glm::vec3 position = raycastResult.m_hitPosition;
+				m_target = aiVector3D(position.x, position.y, position.z);
+				m_targetUpdated = true;
+			}
+			m_prevIsPress = true;
+		}
+		else if (m_prevIsPress && !input.IsMouseButtonPressed(MONA_MOUSE_BUTTON_1)) {
+			m_prevIsPress = false;
+		}
+	}
 
 
 	void UpdateSteeringBehaviour() {}
@@ -308,6 +332,51 @@ public:
 		UpdateTargetPosition(world);
 		UpdateSteeringBehaviour();
 		UpdateAnimationState();
+		//Calculos IK
+		if (m_targetUpdated) {
+			if (m_solverIndex == 0) {
+				m_FABRIKSolver.solve(m_target);
+				m_solution = m_FABRIKSolver.getSolvedChain();
+			}
+			else if (m_solverIndex == 1) {
+
+			}
+			// se modifica la animacion base con los datos obtenidos
+			auto animationTracks = m_chainBaseAnimation->m_animationTracks;
+			for (int i = 0; i < animationTracks.size(); i++) {
+				// un track por nodo
+				// dejamos la pose final de la animacion como la inicial
+				auto animationTrack = animationTracks[i];
+				animationTrack.positions[0] = animationTrack.positions[1];
+				animationTrack.rotations[0] = animationTrack.rotations[1];
+				animationTrack.scales[0] = animationTrack.scales[1];
+
+				
+				Mona::SimpleIKChainNode* currentJoint = m_solution.getChainNode(0);
+				// arreglo temporal para corregir la animacion
+				aiMatrix4x4 jointWorldTransform = currentJoint->getGlobalTransform();
+				aiMatrix4x4 preFixTransform = currentJoint->getLocalTransform();
+				aiMatrix4x4 fixedTransform = fixRotation(preFixTransform, jointWorldTransform);
+
+				aiVector3D trans = Mona::IKUtils::getMatrixTranslation(fixedTransform);
+				aiVector3D scl = Mona::IKUtils::getMatrixScaling(fixedTransform);
+				aiQuaternion rot = Mona::IKUtils::getMatrixRotation(fixedTransform);
+				animationTrack.positions[1] = glm::vec3(trans.x, trans.y, trans.z);
+				animationTrack.rotations[1] = glm::fquat(1.0f, rot.x, rot.y, rot.z);
+				animationTrack.scales[1] = glm::vec3(scl.x, scl.y, scl.z);
+
+				// solo es necesario modificar las transformaciones de las joints
+				i++;
+
+			}
+			m_targetUpdated = false;
+			// una vez actualizamos la animacion falta comenzar la reproduccion
+			m_skeletalMesh->GetAnimationController().PlayAnimation(m_chainBaseAnimation);
+
+
+
+		}
+		
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
 		int numOfSegments = 1;
@@ -324,6 +393,7 @@ public:
 			chainJointIndex -= 1;
 			currNode = currNode->mParent->mParent; //nos saltamos los links	
 		}
+		m_solverIndex = 0;
 		m_FABRIKSolver = Mona::FABRIKSolver(bindPoseChain, 20, 0.001);
 
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
@@ -373,7 +443,11 @@ public:
 		MONA_LOG_INFO("Starting App: ExampleIKChain");
 		world.SetAmbientLight(glm::vec3(0.8f));
 		CreatePlane(world);
-		world.CreateGameObject<AnimatedChain>();
+		auto chainHandle = world.CreateGameObject<AnimatedChain>();
+		auto chainInnerHandle = chainHandle.GetInnerHandle();
+		AnimatedChain* chainObject = (AnimatedChain*) world.m_objectManager.GetGameObjectPointer(chainInnerHandle);
+		m_animatedChainObject = chainObject;
+
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-45.0f));
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-135.0f));
 		std::vector<Mona::IKSolver> ikSolvers = {};
@@ -421,6 +495,8 @@ public:
 		else if (input.IsKeyPressed(MONA_KEY_ESCAPE)) {
 			world.EndApplication();
 		}
+
+
 	}
 
 	void OnDebugGUIEvent(const Mona::DebugGUIEvent& event) {
@@ -440,6 +516,7 @@ private:
 	Mona::GameObjectHandle<Mona::BasicPerspectiveCamera> m_camera;
 	float somefloat = 0.0f;
 	int m_currentMaterialIndex;
+	AnimatedChain* m_animatedChainObject;
 
 
 
