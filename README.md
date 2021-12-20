@@ -9,3 +9,5 @@
 - Las teclas "W", "A", "S" y "D" permiten mover la cámara en la escena. Además las teclas "Q" y "E" permiten rotar lateralmente.
 - El control de la cámara viene activado por defecto. Presionar "1" para desactivarlo y "2" para reactivarlo.
 - La tecla "Esc" cierra la apliación.
+- Idealmente, hacer click en la escena debería llevar el end-effector al lugar indicado, pero las fallas mencionadas en el informe hacen 
+que la cadena desaparezca en lugar de comportarse como es esperado.
