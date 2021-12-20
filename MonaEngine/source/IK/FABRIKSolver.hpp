@@ -8,6 +8,7 @@ namespace Mona {
 
 	class FABRIKSolver : IKSolver {
 	public:
+		FABRIKSolver() = default;
 		FABRIKSolver(SimpleIKChain bindPoseChain, int numOfSteps, float threshold);
 
 		void solve(aiVector3D target);

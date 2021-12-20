@@ -13,6 +13,7 @@ namespace Mona {
 		aiVector3D m_currentTarget;
 		int m_numOfSteps;
 		float m_threshold;
+		IKSolver() = default;
 		IKSolver(SimpleIKChain bindPoseChain, int numOfSteps, float threshold) {
 			m_bindPoseChain = bindPoseChain;
 			m_solvedChain = bindPoseChain;

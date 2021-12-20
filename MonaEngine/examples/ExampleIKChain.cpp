@@ -4,7 +4,6 @@
 #include "Animation/SkinnedMesh.hpp"
 #include "Utilities/BasicCameraControllers.hpp"
 #include "IK/SimpleIKChain.hpp"
-#include "IK/IKSolver.hpp"
 #include "IK/FABRIKSolver.hpp"
 #include "IK/CCDSolver.hpp"
 #include <imgui.h>
