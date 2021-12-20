@@ -29,6 +29,11 @@ namespace Mona {
 	int SimpleIKChain::getNumNodes() {
 		return m_numNodes;
 	}
+
+	float SimpleIKChain::getLinkLength() {
+		return m_linkLength;
+	}
+
 	SimpleIKChainNode* SimpleIKChain::getChainNode(int index) {
 		if (index < 0 || index >= m_numNodes) {
 			MONA_LOG_ERROR("SimpleIKChain Error: Index {0} out of bounds", index);
@@ -38,7 +43,12 @@ namespace Mona {
 
 
 
-
+	aiMatrix4x4 identityMatrix() {
+		aiVector3D trans = aiVector3D(0.0f, 0.0f, 0.0f);
+		aiQuaternion rot = aiQuaternion(0.0f, 0.0f, 0.0f);
+		aiVector3D scal = aiVector3D(1.0f, 1.0f, 1.0f);
+		return aiMatrix4x4(scal, rot, trans);
+	}
 
 	SimpleIKChainNode::SimpleIKChainNode() {
 		m_parent = nullptr;
@@ -77,11 +87,17 @@ namespace Mona {
 		m_parent = parentNode;
 	}
 
-	aiMatrix4x4 SimpleIKChainNode::identityMatrix() {
-		aiVector3D trans = aiVector3D(0.0f, 0.0f, 0.0f);
-		aiQuaternion rot = aiQuaternion(0.0f, 0.0f, 0.0f);
-		aiVector3D scal = aiVector3D(1.0f, 1.0f, 1.0f);
-		return aiMatrix4x4(scal, rot, trans);
+	aiVector3D getMatrixTranslation(aiMatrix4x4 mat) {
+		aiVector3D pos;
+		aiQuaternion rot;
+		aiVector3D scl;
+		mat.Decompose(scl, rot, pos);
+		return pos;
+	}
+	aiVector3D SimpleIKChainNode::getGlobalTranslation() {
+		aiMatrix4x4 globalTransform = getGlobalTransform();
+		return getMatrixTranslation(globalTransform);
+
 	}
 
 

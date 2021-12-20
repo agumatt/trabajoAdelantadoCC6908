@@ -4,6 +4,9 @@
 #include "Animation/SkinnedMesh.hpp"
 #include "Utilities/BasicCameraControllers.hpp"
 #include "IK/SimpleIKChain.hpp"
+#include "IK/IKSolver.hpp"
+#include "IK/FABRIKSolver.hpp"
+#include "IK/CCDSolver.hpp"
 #include <imgui.h>
 #include <iostream>
 
@@ -124,11 +127,11 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	nodes[2 * numOfSegments]->mParent = nodes[2 * numOfSegments - 1];
 	// por ultimo seteamos las transformaciones
 	// los dos primeros nodos son especiales
-	float bScale = 0.2f; // base scale
+	float bScale = 1.0f; // base scale
 	float flLen = segmentLength; // first link relative length to joint
 	float flThin = 0.5f; // make first link thinner relative to joint
 	float scaleDown = 1.0f; // reduce size of joints and links further in the chain
-	aiMatrix4x4 accTransform = Mona::SimpleIKChainNode::identityMatrix();
+	aiMatrix4x4 accTransform = Mona::IKSolver::identityMatrix();
 	// joint
 	aiVector3D scaling = aiVector3D(bScale, bScale, bScale); // escalamiento base
 	aiQuaternion rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -140,7 +143,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	accTransform = accTransform* finalJointTransform;
 	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
-	meshes[0]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix(); 
+	meshes[0]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
 	// link
 	scaling = aiVector3D(flThin, flThin, flLen); // escalamiento base
 	rotation = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -152,7 +155,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 	accTransform = accTransform * finalLinkTransform;
 	worldTransforms->push_back(accTransform);
 	// set inverseBindMat
-	meshes[1]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
+	meshes[1]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
 	// last local link transform
 	aiMatrix4x4 lastLinkTransform = linkTransform;
 	aiMatrix4x4 lastJointTransform = jointTransform;
@@ -178,7 +181,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		accTransform = accTransform*finalJointTransform;
 		worldTransforms->push_back(accTransform);
 		// set inverseBindMat
-		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
+		meshes[2 * i]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
 		// update saved local joint transform
 		lastJointTransform = finalJointTransform;
 		
@@ -194,7 +197,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 			accTransform = accTransform*finalLinkTransform;
 			worldTransforms->push_back(accTransform);
 			// set inverseBindMat
-			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::SimpleIKChainNode::identityMatrix();
+			meshes[2 * i + 1]->mBones[0]->mOffsetMatrix = Mona::IKSolver::identityMatrix();
 			// update saved local link transform
 			lastLinkTransform = finalLinkTransform;
 
@@ -226,7 +229,7 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 		aiVectorKey* scl = new aiVectorKey[2];
 		scl[0] = aiVectorKey(0.0f, aiVector3D(1.0f, 1.0f, 1.0f));
 		scl[1] = aiVectorKey(animations[0]->mDuration, aiVector3D(1.0f, 1.0f, 1.0f));
-		if (i == 6) {
+		if (i == -6) {
 			aiMatrix4x4 worldTrans = worldTransforms->at(i);
 			aiVector3D aiPos = aiVector3D(0.0f, 0.0f, 0.0f);
 			aiQuaternion aiRot = aiQuaternion(0.0f, 0.0f, 0.0f);
@@ -264,6 +267,21 @@ aiScene* animatedChainScene(int numOfSegments, float segmentLength, float animDu
 }
 
 
+aiMatrix4x4 fixRotation(aiMatrix4x4 inputTransform, aiMatrix4x4 jointWorldTransform) {
+	aiVector3D aiPos = aiVector3D(0.0f, 0.0f, 0.0f);
+	aiQuaternion aiRot = aiQuaternion(0.0f, 0.0f, 0.0f);
+	aiVector3D aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
+	jointWorldTransform.Decompose(aiScale, aiRot, aiPos);
+	aiVector3D displaceToOriginV = -aiPos;
+	aiVector3D displaceBackV = aiPos;
+	aiMatrix4x4 displaceToOriginM = aiMatrix4x4(aiScale, aiRot, displaceToOriginV);
+	aiRot = aiQuaternion(1.0f, 0.0f, 0.0f);
+	aiScale = aiVector3D(1.0f, 1.0f, 1.0f);
+	aiMatrix4x4 rotateAndDisplaceBackM = aiMatrix4x4(aiScale, aiRot, displaceBackV);
+	aiMatrix4x4 outTransform = rotateAndDisplaceBackM * displaceToOriginM;
+	return outTransform;
+}
+
 class AnimatedChain :public Mona::GameObject {
 
 private:
@@ -271,6 +289,8 @@ private:
 	Mona::SkeletalMeshHandle m_skeletalMesh;
 	Mona::TransformHandle m_transform;
 	std::shared_ptr<Mona::AnimationClip> m_chainBaseAnimation;
+	Mona::FABRIKSolver m_FABRIKSolver;
+	//Mona::CCDSolver m_CCDSolver;
 public:
 	std::vector<aiMatrix4x4> m_worldTransforms = {};
 
@@ -291,10 +311,22 @@ public:
 		UpdateAnimationState();
 	};
 	virtual void UserStartUp(Mona::World& world) noexcept {
-		int numOfSegments = 5;
+		int numOfSegments = 1;
 		float segmentLength = 5.0f;
-		float animDuration = 1.0f;
+		float animDuration = 3.0f;
 		m_chainScene = animatedChainScene(numOfSegments, segmentLength, animDuration, &m_worldTransforms);
+		// create IK chains
+		Mona::SimpleIKChain bindPoseChain = Mona::SimpleIKChain(numOfSegments + 1, segmentLength);
+		aiNode* rootNode = m_chainScene->mRootNode;
+		aiNode* currNode = rootNode;
+		int chainJointIndex = numOfSegments;
+		while (chainJointIndex >= 0) {
+			bindPoseChain.getChainNode(chainJointIndex)->setLocalTransform(currNode->mTransformation);
+			chainJointIndex -= 1;
+			currNode = currNode->mParent->mParent; //nos saltamos los links	
+		}
+		m_FABRIKSolver = Mona::FABRIKSolver(bindPoseChain, 20, 0.001);
+
 		m_transform = world.AddComponent<Mona::TransformComponent>(*this);
 
 		auto& meshManager = Mona::MeshManager::GetInstance();
@@ -345,6 +377,7 @@ public:
 		world.CreateGameObject<AnimatedChain>();
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-45.0f));
 		AddDirectionalLight(world, glm::vec3(1.0f, 0.0f, 0.0f), 2.0f, glm::radians(-135.0f));
+		std::vector<Mona::IKSolver> ikSolvers = {};
 
 		// input/camera set up
 		auto& eventManager = world.GetEventManager();

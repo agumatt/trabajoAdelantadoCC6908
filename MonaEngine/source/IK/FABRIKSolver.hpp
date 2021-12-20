@@ -2,14 +2,19 @@
 #ifndef FABRIKSOLVER_HPP
 #define FABRIKSOLVER_HPP
 #include "SimpleIKChain.hpp"
+#include "IKSolver.hpp"
 
 namespace Mona {
 
-	class FABRIKSolver {
+	class FABRIKSolver : IKSolver {
+	public:
+		FABRIKSolver(SimpleIKChain bindPoseChain, int numOfSteps, float threshold);
 
-		FABRIKSolver(SimpleIKChain& chain);
+		void solve(aiVector3D target);
 
-
+	private:
+		void IterateBackward(aiVector3D target);
+		void IterateForward(aiVector3D base);
 
 };
 

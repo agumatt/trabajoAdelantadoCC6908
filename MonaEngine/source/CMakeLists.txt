@@ -4,6 +4,7 @@ set(MONA_HEADERS
 				Core/Config.hpp
 				Core/RootDirectory.hpp
 				Core/AssimpTransformations.hpp
+				IK/IKSolver.hpp
 				IK/CCDSolver.hpp
 				IK/FabrikSolver.hpp
 				IK/SimpleIKChain.hpp

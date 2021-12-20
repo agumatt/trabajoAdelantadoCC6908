@@ -29,6 +29,9 @@
 #include "../Animation/SkeletalMeshComponent.hpp"
 #include "../Animation/JointPose.hpp"
 #include "../IK/SimpleIKChain.hpp"
+#include "../IK/IKSolver.hpp"
+#include "../IK/FABRIKSolver.hpp"
+#include "../IK/CCDSolver.hpp"
 
 #include <memory>
 #include <array>

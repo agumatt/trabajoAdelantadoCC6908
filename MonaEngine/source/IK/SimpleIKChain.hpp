@@ -16,9 +16,9 @@ namespace Mona {
 		SimpleIKChainNode* m_child;
 		aiMatrix4x4 m_localTransform;
 	public:
-		static aiMatrix4x4 identityMatrix();
 		SimpleIKChainNode();
 		aiMatrix4x4 getGlobalTransform();
+		aiVector3D getGlobalTranslation();
 		aiMatrix4x4 getLocalTransform();
 		void setLocalTransform(aiMatrix4x4 t);
 		SimpleIKChainNode* getParent();
@@ -32,9 +32,11 @@ namespace Mona {
 	class SimpleIKChain {
 
 	public:
+		SimpleIKChain() = default;
 		SimpleIKChain(int numNodes, float linkLength);
 		int getNumNodes();
 		SimpleIKChainNode* getChainNode(int index);
+		float getLinkLength();
 	private:
 		int m_numNodes;
 		float m_linkLength;
